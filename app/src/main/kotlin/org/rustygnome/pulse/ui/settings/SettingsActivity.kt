@@ -167,9 +167,7 @@ class SettingsActivity : AppCompatActivity() {
     private fun showEditDialog(resource: Resource?) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_edit_resource, null)
         val switchEnableLocal = dialogView.findViewById<SwitchMaterial>(R.id.switchEnableLocal)
-        val localOptionsContainer = dialogView.findViewById<View>(R.id.localOptionsContainer)
         val btnSelectPlugin = dialogView.findViewById<Button>(R.id.btnSelectPlugin)
-        val btnImportAsset = dialogView.findViewById<Button>(R.id.btnImportAsset)
         val btnDownloadPlugin = dialogView.findViewById<Button>(R.id.btnDownloadPlugin)
         txtSelectedPlugin = dialogView.findViewById(R.id.txtSelectedPlugin)
 
@@ -183,16 +181,18 @@ class SettingsActivity : AppCompatActivity() {
         txtCredentialsHeader = dialogView.findViewById(R.id.txtCredentialsHeader)
 
         switchEnableLocal.setOnCheckedChangeListener { _, isChecked ->
-            localOptionsContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
+            if (isChecked) {
+                btnSelectPlugin.visibility = View.VISIBLE
+                btnDownloadPlugin.visibility = View.GONE
+            } else {
+                btnSelectPlugin.visibility = View.GONE
+                btnDownloadPlugin.visibility = View.VISIBLE
+            }
         }
 
         btnSelectPlugin.setOnClickListener {
             val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*" }
             pluginPickerLauncher.launch(intent)
-        }
-
-        btnImportAsset.setOnClickListener {
-            importLocalPlugins()
         }
 
         btnDownloadPlugin.setOnClickListener {
@@ -332,43 +332,6 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         alertDialog.show()
-    }
-
-    private fun importLocalPlugins() {
-        try {
-            val pluginFiles = assets.list("plugins") ?: emptyArray()
-            val pulseFiles = pluginFiles.filter { it.endsWith(".pulse") }
-            
-            if (pulseFiles.isEmpty()) {
-                Toast.makeText(this, "No .pulse files found in assets/plugins", Toast.LENGTH_SHORT).show()
-                return
-            }
-
-            AlertDialog.Builder(this)
-                .setTitle("Select Local Plugin")
-                .setItems(pulseFiles.toTypedArray()) { _, which ->
-                    val fileName = pulseFiles[which]
-                    try {
-                        val inputStream = assets.open("plugins/$fileName")
-                        val unpackedData = pluginManager.unpackPlugin(inputStream)
-                        if (unpackedData != null) {
-                            currentPluginData = unpackedData
-                            txtSelectedPlugin?.text = fileName
-                            showPluginPreview(unpackedData, null)
-                        } else {
-                            Toast.makeText(this, "Failed to unpack local plugin", Toast.LENGTH_SHORT).show()
-                        }
-                    } catch (e: IOException) {
-                        Log.e("SettingsActivity", "Error opening asset", e)
-                        Toast.makeText(this, "Error opening plugin file", Toast.LENGTH_SHORT).show()
-                    }
-                }
-                .setNegativeButton("Cancel", null)
-                .show()
-        } catch (e: Exception) {
-            Log.e("SettingsActivity", "Error listing assets", e)
-            Toast.makeText(this, "Error accessing local plugins", Toast.LENGTH_SHORT).show()
-        }
     }
 
     private fun showGitHubPluginsDialog() {
