@@ -32,15 +32,26 @@ class GitHubPluginService {
 
                     for (i in 0 until releasesJson.length()) {
                         val release = releasesJson.getJSONObject(i)
+                        val body = release.optString("body", "")
                         val assets = release.getJSONArray("assets")
                         for (j in 0 until assets.length()) {
                             val asset = assets.getJSONObject(j)
                             val name = asset.getString("name")
+                            val label = asset.optString("label", "")
+                            
                             if (name.endsWith(".pulse")) {
+                                // Prefer asset label (if set in GitHub Release UI)
+                                // Otherwise try to parse the release body for "pluginname: description"
+                                val individualDescription = when {
+                                    label.isNotEmpty() -> label
+                                    else -> findDescriptionInBody(body, name) ?: body
+                                }
+
                                 plugins.add(GitHubPlugin(
-                                    name = name,
+                                    name = name.removeSuffix(".pulse"),
                                     downloadUrl = asset.getString("browser_download_url"),
-                                    releaseName = release.getString("name")
+                                    releaseName = release.getString("name"),
+                                    description = individualDescription
                                 ))
                             }
                         }
@@ -53,9 +64,21 @@ class GitHubPluginService {
         })
     }
 
+    private fun findDescriptionInBody(body: String, fileName: String): String? {
+        val nameWithoutExt = fileName.removeSuffix(".pulse")
+        val patterns = listOf("$nameWithoutExt:", "$fileName:")
+        return body.lines()
+            .map { it.trim() }
+            .firstOrNull { line -> 
+                patterns.any { p -> line.startsWith(p, ignoreCase = true) } 
+            }
+            ?.substringAfter(":")?.trim()
+    }
+
     data class GitHubPlugin(
         val name: String,
         val downloadUrl: String,
-        val releaseName: String
+        val releaseName: String,
+        val description: String
     )
 }

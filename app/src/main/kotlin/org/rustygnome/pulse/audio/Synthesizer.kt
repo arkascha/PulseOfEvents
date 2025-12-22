@@ -41,8 +41,8 @@ class Synthesizer(private val context: Context) {
         val pluginSoundsDir = pluginId?.let { pluginManager.getSoundsDir(it) }
 
         val folderName = when (style) {
-            "99Sounds Drum Samples I" -> "99Sounds/Drum Samples I"
-            "99Sounds Drum Samples II" -> "99Sounds/Drum Samples II"
+            "99Sounds Percussion I", "99Sounds Drum Samples I" -> "99Sounds/Drum Samples I"
+            "99Sounds Percussion II", "99Sounds Drum Samples II" -> "99Sounds/Drum Samples II"
             "orchestra_tada" -> "Orchestra/tada"
             "orchestra_violin" -> "Orchestra/violin"
             else -> style

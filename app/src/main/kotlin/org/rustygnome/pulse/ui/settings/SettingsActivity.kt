@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
@@ -47,6 +48,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private var txtSelectedPlugin: TextView? = null
     private var currentPluginData: PluginManager.PluginData? = null
+    private var activeEditDialog: AlertDialog? = null
 
     // Preview fields
     private var previewContainer: View? = null
@@ -66,7 +68,7 @@ class SettingsActivity : AppCompatActivity() {
             currentPluginData = pluginManager.unpackPlugin(uri)
             if (currentPluginData != null) {
                 txtSelectedPlugin?.text = uri.lastPathSegment ?: "Plugin unpacked"
-                showPluginPreview(currentPluginData!!, null)
+                showPluginPreview(currentPluginData!!, null, false)
             } else {
                 Toast.makeText(this, "Invalid Plugin ZIP", Toast.LENGTH_SHORT).show()
                 previewContainer?.visibility = View.GONE
@@ -199,23 +201,14 @@ class SettingsActivity : AppCompatActivity() {
             showGitHubPluginsDialog()
         }
 
-        resource?.let {
-            txtSelectedPlugin?.text = "Plugin: ${it.pluginId}"
-            val mockData = PluginManager.PluginData(
-                it.pluginId,
-                it.scriptContent,
-                it.configContent,
-                ""
-            )
-            showPluginPreview(mockData, it)
-        }
-
         val alertDialog = AlertDialog.Builder(this)
             .setTitle(if (resource == null) "Add Plugin" else "Edit Plugin")
             .setView(dialogView)
             .setPositiveButton("Save", null)
             .setNegativeButton("Cancel", null)
             .create()
+        
+        activeEditDialog = alertDialog
 
         alertDialog.setOnShowListener {
             val saveButton = alertDialog.getButton(AlertDialog.BUTTON_POSITIVE)
@@ -329,6 +322,17 @@ class SettingsActivity : AppCompatActivity() {
                     }
                 }
             }
+
+            resource?.let {
+                txtSelectedPlugin?.text = "Plugin: ${it.pluginId}"
+                val mockData = PluginManager.PluginData(
+                    it.pluginId,
+                    it.scriptContent,
+                    it.configContent,
+                    ""
+                )
+                showPluginPreview(mockData, it, false)
+            }
         }
 
         alertDialog.show()
@@ -336,7 +340,7 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun showGitHubPluginsDialog() {
         val progressDialog = AlertDialog.Builder(this)
-            .setMessage("Fetching plugins from GitHub...")
+            .setMessage("Fetching available plugins...")
             .setCancelable(false)
             .show()
 
@@ -345,14 +349,32 @@ class SettingsActivity : AppCompatActivity() {
                 runOnUiThread {
                     progressDialog.dismiss()
                     if (plugins.isEmpty()) {
-                        Toast.makeText(this, "No plugins found on GitHub", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "No plugins found online", Toast.LENGTH_SHORT).show()
                         return@runOnUiThread
                     }
 
-                    val pluginNames = plugins.map { "${it.name} (${it.releaseName})" }.toTypedArray()
+                    val adapter = object : ArrayAdapter<GitHubPluginService.GitHubPlugin>(
+                        this, R.layout.item_github_plugin, plugins
+                    ) {
+                        override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+                            val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.item_github_plugin, parent, false)
+                            val plugin = getItem(position)!!
+                            view.findViewById<TextView>(R.id.pluginName).text = plugin.name
+                            val descView = view.findViewById<TextView>(R.id.pluginDescription)
+
+                            if (plugin.description.isNullOrBlank()) {
+                                descView.visibility = View.GONE
+                            } else {
+                                descView.visibility = View.VISIBLE
+                                descView.text = plugin.description
+                            }
+                            return view
+                        }
+                    }
+
                     AlertDialog.Builder(this)
                         .setTitle("Select Plugin to Download")
-                        .setItems(pluginNames) { _, which ->
+                        .setAdapter(adapter) { _, which ->
                             downloadAndUnpackPlugin(plugins[which])
                         }
                         .setNegativeButton("Cancel", null)
@@ -409,7 +431,7 @@ class SettingsActivity : AppCompatActivity() {
                     if (unpackedData != null) {
                         currentPluginData = unpackedData
                         txtSelectedPlugin?.text = plugin.name
-                        showPluginPreview(unpackedData, null)
+                        showPluginPreview(unpackedData, null, true)
                     } else {
                         Toast.makeText(this@SettingsActivity, "Failed to unpack downloaded plugin", Toast.LENGTH_SHORT).show()
                     }
@@ -442,7 +464,7 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun showPluginPreview(data: PluginManager.PluginData, resource: Resource?) {
+    private fun showPluginPreview(data: PluginManager.PluginData, resource: Resource?, isDownload: Boolean) {
         try {
             val config = JSONObject(data.config)
             previewContainer?.visibility = View.VISIBLE
@@ -484,6 +506,26 @@ class SettingsActivity : AppCompatActivity() {
             }
             
             updateCredentialsUI(requiredFields, resource)
+
+            if (isDownload) {
+                activeEditDialog?.getButton(AlertDialog.BUTTON_NEGATIVE)?.apply {
+                    text = "Back to List"
+                    setOnClickListener {
+                        previewContainer?.visibility = View.GONE
+                        currentPluginData = null
+                        txtSelectedPlugin?.text = "No plugin selected"
+                        updateCredentialsUI(emptySet(), null)
+                        showGitHubPluginsDialog()
+                    }
+                }
+            } else {
+                activeEditDialog?.getButton(AlertDialog.BUTTON_NEGATIVE)?.apply {
+                    text = "Cancel"
+                    setOnClickListener {
+                        activeEditDialog?.dismiss()
+                    }
+                }
+            }
 
         } catch (e: Exception) {
             Log.e("SettingsActivity", "Error displaying preview", e)

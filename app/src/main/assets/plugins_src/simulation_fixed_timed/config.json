@@ -1,6 +1,0 @@
-{
-  "name": "Simulation with fixed timed events",
-  "eventFile": "stress_events.json",
-  "acousticStyle": "99Sounds Percussion I",
-  "eventSounds": ["kick-808", "snare-808", "hihat-808", "clap-808", "tom-808", "cowbell-808"]
-}

@@ -1,7 +1,7 @@
 {
   "name": "Random Chaos Generator",
   "type": "SIMULATION",
-  "description": "An endless generator of random sounds from the 'Drum Samples II' collection. Volume and pitch vary randomly for every event. Great for testing and soundscape generation.",
+  "description": "An endless generator of random events. Volume and pitch vary randomly for the events. Great for testing and noise generation.",
   "eventFile": "chaos",
   "acousticStyle": "99Sounds Drum Samples II",
   "eventSounds": [

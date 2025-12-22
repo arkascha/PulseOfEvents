@@ -1,5 +1,7 @@
 {
   "name": "Coinbase Market Data",
+  "type": "WEBSOCKET",
+  "description": "Live Bitcoin purchases in USD or EUR on the Coinbase marketplace. Volume scales with quantity and pitch scales with price.",
   "webSocketUrl": "wss://ws-feed.exchange.coinbase.com",
   "webSocketPayload": "{\"type\": \"subscribe\", \"product_ids\": [\"BTC-USD\", \"BTC-EUR\"], \"channels\": [\"ticker\"]}",
   "acousticStyle": "orchestra_triumphant",

@@ -1,5 +1,7 @@
 {
-  "name": "Simulation with variable timed events",
+  "name": "File with variable timed events",
+  "type": "FILE",
+  "description": "A stream of events read from a local file. Uses variable, randomized timing. For testing purpose only.",
   "eventFile": "violin_events.json",
   "acousticStyle": "orchestra_violin",
   "timestampProperty": "timestamp",

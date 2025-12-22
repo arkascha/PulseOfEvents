@@ -1,0 +1,8 @@
+{
+  "name": "File with fixed timed events",
+  "type": "FILE",
+  "description": "A stream of events read from a local file. Uses a fixed timing - one event per second. For testing purpose only.",
+  "eventFile": "stress_events.json",
+  "acousticStyle": "99Sounds Percussion I",
+  "eventSounds": ["kick-808", "snare-808", "hihat-808", "clap-808", "tom-808", "cowbell-808"]
+}
