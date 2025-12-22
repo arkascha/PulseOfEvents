@@ -92,6 +92,11 @@ class SettingsActivity : AppCompatActivity() {
         pulseManager = PulseManager(this)
         githubService = GitHubPulseService()
 
+        // Set version display in main layout
+        val txtAppVersionMain: TextView = findViewById(R.id.txtAppVersionMain)
+        val versionName = packageManager.getPackageInfo(packageName, 0).versionName ?: "unknown"
+        txtAppVersionMain.text = "Version: $versionName"
+
         val recyclerView: RecyclerView = findViewById(R.id.resourceRecyclerView)
         adapter = PulseSettingsAdapter(
             onEdit = { showEditDialog(it) },
@@ -344,12 +349,14 @@ class SettingsActivity : AppCompatActivity() {
             .setCancelable(false)
             .show()
 
+        val versionName = packageManager.getPackageInfo(packageName, 0).versionName ?: "1.0"
         githubService.fetchAvailablePulses(
+            versionName = versionName,
             onSuccess = { pulses ->
                 runOnUiThread {
                     progressDialog.dismiss()
                     if (pulses.isEmpty()) {
-                        Toast.makeText(this, "No pulses found online", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this, "No pulses found online for version $versionName", Toast.LENGTH_SHORT).show()
                         return@runOnUiThread
                     }
 

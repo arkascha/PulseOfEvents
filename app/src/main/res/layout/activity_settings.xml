@@ -31,6 +31,16 @@
         app:layout_behavior="@string/appbar_scrolling_view_behavior"
         app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager" />
 
+    <TextView
+        android:id="@+id/txtAppVersionMain"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|start"
+        android:layout_margin="16dp"
+        android:text="Version: unknown"
+        android:textAppearance="?attr/textAppearanceCaption"
+        android:alpha="0.6" />
+
     <com.google.android.material.floatingactionbutton.FloatingActionButton
         android:id="@+id/addResourceFab"
         android:layout_width="wrap_content"

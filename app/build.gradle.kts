@@ -1,7 +1,23 @@
+import java.util.Properties
+import java.io.ByteArrayOutputStream
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.symbol.processing)
+}
+
+fun getVersionNameFromGit(): String {
+    return try {
+        val stdout = ByteArrayOutputStream()
+        project.exec {
+            commandLine("git", "describe", "--tags", "--match", "version-*", "--abbrev=0")
+            standardOutput = stdout
+        }
+        stdout.toString().trim().replace("version-", "")
+    } catch (e: Exception) {
+        "1.0" // Fallback
+    }
 }
 
 android {
@@ -13,7 +29,7 @@ android {
         minSdk = 27
         targetSdk = 36
         versionCode = 1
-        versionName = "1.0"
+        versionName = getVersionNameFromGit()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
