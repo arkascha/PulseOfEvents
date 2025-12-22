@@ -1,4 +1,4 @@
-// PulsingDroid Mapping Script
+// PulseOfEvents Mapping Script
 // Example: E-Commerce Orders
 
 var result = {
