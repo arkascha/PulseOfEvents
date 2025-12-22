@@ -21,6 +21,12 @@ Each loaded event stream plugin offers a music player like control: a "play" but
 How the event data is transformed into sound is configured in the plugin definition, there is no means to somehow modify that configuration. 
 The app's UI is simple, should be self explaining. 
 
+## Motivation
+As you probably realized by now this whole idea does not make much sense ;-)
+Don't always take things too serious. This is a fun project, a learning experiment. I wanted to try AI agent based coding for the first time honestly. 
+And frankly I have to admit that I am deeply impressed. Quite unlike previous experiences with AI I made over the last years, when it comes to programming. 
+This project has been coded completely by an AI, Gemini specifically, as it is integrated into AndroidStudio. I did not directly change a single line of code, nor did I invest much into setup or architecture. 
+
 ## Contributions
 I am more than happy to accept contributions to this little experiement. Just contact me about ideas, wishes, suggestions. Or even open a pull request here if you did some coding yourself. 
 I will accept all contributions that do make sense and that do not in any way violate other's rights, general rules or raise other issues in any form. The decision is mine. 

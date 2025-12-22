@@ -5,6 +5,7 @@ import android.net.Uri
 import android.util.Log
 import java.io.File
 import java.io.FileOutputStream
+import java.io.InputStream
 import java.util.zip.ZipInputStream
 
 class PluginManager(private val context: Context) {
@@ -18,6 +19,17 @@ class PluginManager(private val context: Context) {
     }
 
     fun unpackPlugin(uri: Uri): PluginData? {
+        return try {
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                unpackPlugin(inputStream)
+            }
+        } catch (e: Exception) {
+            Log.e("PluginManager", "Error opening URI stream", e)
+            null
+        }
+    }
+
+    fun unpackPlugin(inputStream: InputStream): PluginData? {
         val pluginId = System.currentTimeMillis().toString()
         val targetDir = File(pluginsDir, pluginId)
         targetDir.mkdirs()
@@ -26,28 +38,26 @@ class PluginManager(private val context: Context) {
         var configContent: String? = null
 
         try {
-            context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                ZipInputStream(inputStream).use { zis ->
-                    var entry = zis.nextEntry
-                    while (entry != null) {
-                        val file = File(targetDir, entry.name)
-                        if (entry.isDirectory) {
-                            file.mkdirs()
-                        } else {
-                            file.parentFile?.mkdirs()
-                            FileOutputStream(file).use { fos ->
-                                zis.copyTo(fos)
-                            }
-                            
-                            // Check for special files
-                            when (entry.name) {
-                                "mapping.js" -> scriptContent = file.readText()
-                                "config.json" -> configContent = file.readText()
-                            }
+            ZipInputStream(inputStream).use { zis ->
+                var entry = zis.nextEntry
+                while (entry != null) {
+                    val file = File(targetDir, entry.name)
+                    if (entry.isDirectory) {
+                        file.mkdirs()
+                    } else {
+                        file.parentFile?.mkdirs()
+                        FileOutputStream(file).use { fos ->
+                            zis.copyTo(fos)
                         }
-                        zis.closeEntry()
-                        entry = zis.nextEntry
+                        
+                        // Check for special files
+                        when (entry.name) {
+                            "mapping.js" -> scriptContent = file.readText()
+                            "config.json" -> configContent = file.readText()
+                        }
                     }
+                    zis.closeEntry()
+                    entry = zis.nextEntry
                 }
             }
         } catch (e: Exception) {

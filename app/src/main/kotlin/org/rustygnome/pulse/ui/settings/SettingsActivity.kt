@@ -14,19 +14,24 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.room.Room
 import com.google.android.material.appbar.MaterialToolbar
 import com.google.android.material.floatingactionbutton.FloatingActionButton
+import com.google.android.material.switchmaterial.SwitchMaterial
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import org.json.JSONObject
 import org.rustygnome.pulse.R
 import org.rustygnome.pulse.data.AppDatabase
 import org.rustygnome.pulse.data.Resource
 import org.rustygnome.pulse.data.ResourceType
 import org.rustygnome.pulse.data.SecurityHelper
+import org.rustygnome.pulse.plugins.GitHubPluginService
 import org.rustygnome.pulse.plugins.PluginManager
+import java.io.IOException
 import java.util.Collections
 import java.util.Locale
 
@@ -36,6 +41,7 @@ class SettingsActivity : AppCompatActivity() {
     private lateinit var adapter: ResourceAdapter
     private lateinit var securityHelper: SecurityHelper
     private lateinit var pluginManager: PluginManager
+    private lateinit var githubService: GitHubPluginService
     private var resourceList: MutableList<Resource> = mutableListOf()
     private lateinit var itemTouchHelper: ItemTouchHelper
 
@@ -82,6 +88,7 @@ class SettingsActivity : AppCompatActivity() {
             .build()
         securityHelper = SecurityHelper(this)
         pluginManager = PluginManager(this)
+        githubService = GitHubPluginService()
 
         val recyclerView: RecyclerView = findViewById(R.id.resourceRecyclerView)
         adapter = ResourceAdapter(
@@ -159,7 +166,11 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun showEditDialog(resource: Resource?) {
         val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_edit_resource, null)
+        val switchEnableLocal = dialogView.findViewById<SwitchMaterial>(R.id.switchEnableLocal)
+        val localOptionsContainer = dialogView.findViewById<View>(R.id.localOptionsContainer)
         val btnSelectPlugin = dialogView.findViewById<Button>(R.id.btnSelectPlugin)
+        val btnImportAsset = dialogView.findViewById<Button>(R.id.btnImportAsset)
+        val btnDownloadPlugin = dialogView.findViewById<Button>(R.id.btnDownloadPlugin)
         txtSelectedPlugin = dialogView.findViewById(R.id.txtSelectedPlugin)
 
         previewContainer = dialogView.findViewById(R.id.previewContainer)
@@ -171,9 +182,21 @@ class SettingsActivity : AppCompatActivity() {
         credentialsContainer = dialogView.findViewById(R.id.credentialsContainer)
         txtCredentialsHeader = dialogView.findViewById(R.id.txtCredentialsHeader)
 
+        switchEnableLocal.setOnCheckedChangeListener { _, isChecked ->
+            localOptionsContainer.visibility = if (isChecked) View.VISIBLE else View.GONE
+        }
+
         btnSelectPlugin.setOnClickListener {
             val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*" }
             pluginPickerLauncher.launch(intent)
+        }
+
+        btnImportAsset.setOnClickListener {
+            importLocalPlugins()
+        }
+
+        btnDownloadPlugin.setOnClickListener {
+            showGitHubPluginsDialog()
         }
 
         resource?.let {
@@ -309,6 +332,127 @@ class SettingsActivity : AppCompatActivity() {
         }
 
         alertDialog.show()
+    }
+
+    private fun importLocalPlugins() {
+        try {
+            val pluginFiles = assets.list("plugins") ?: emptyArray()
+            val pulseFiles = pluginFiles.filter { it.endsWith(".pulse") }
+            
+            if (pulseFiles.isEmpty()) {
+                Toast.makeText(this, "No .pulse files found in assets/plugins", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            AlertDialog.Builder(this)
+                .setTitle("Select Local Plugin")
+                .setItems(pulseFiles.toTypedArray()) { _, which ->
+                    val fileName = pulseFiles[which]
+                    try {
+                        val inputStream = assets.open("plugins/$fileName")
+                        val unpackedData = pluginManager.unpackPlugin(inputStream)
+                        if (unpackedData != null) {
+                            currentPluginData = unpackedData
+                            txtSelectedPlugin?.text = fileName
+                            showPluginPreview(unpackedData, null)
+                        } else {
+                            Toast.makeText(this, "Failed to unpack local plugin", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: IOException) {
+                        Log.e("SettingsActivity", "Error opening asset", e)
+                        Toast.makeText(this, "Error opening plugin file", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        } catch (e: Exception) {
+            Log.e("SettingsActivity", "Error listing assets", e)
+            Toast.makeText(this, "Error accessing local plugins", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showGitHubPluginsDialog() {
+        val progressDialog = AlertDialog.Builder(this)
+            .setMessage("Fetching plugins from GitHub...")
+            .setCancelable(false)
+            .show()
+
+        githubService.fetchAvailablePlugins(
+            onSuccess = { plugins ->
+                runOnUiThread {
+                    progressDialog.dismiss()
+                    if (plugins.isEmpty()) {
+                        Toast.makeText(this, "No plugins found on GitHub", Toast.LENGTH_SHORT).show()
+                        return@runOnUiThread
+                    }
+
+                    val pluginNames = plugins.map { "${it.name} (${it.releaseName})" }.toTypedArray()
+                    AlertDialog.Builder(this)
+                        .setTitle("Select Plugin to Download")
+                        .setItems(pluginNames) { _, which ->
+                            downloadAndUnpackPlugin(plugins[which])
+                        }
+                        .setNegativeButton("Cancel", null)
+                        .show()
+                }
+            },
+            onError = { e ->
+                runOnUiThread {
+                    progressDialog.dismiss()
+                    Toast.makeText(this, "Error fetching plugins: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        )
+    }
+
+    private fun downloadAndUnpackPlugin(plugin: GitHubPluginService.GitHubPlugin) {
+        val progressDialog = AlertDialog.Builder(this)
+            .setMessage("Downloading ${plugin.name}...")
+            .setCancelable(false)
+            .show()
+
+        val client = OkHttpClient()
+        val request = Request.Builder().url(plugin.downloadUrl).build()
+
+        client.newCall(request).enqueue(object : okhttp3.Callback {
+            override fun onFailure(call: okhttp3.Call, e: IOException) {
+                runOnUiThread {
+                    progressDialog.dismiss()
+                    Toast.makeText(this@SettingsActivity, "Download failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+
+            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+                if (!response.isSuccessful) {
+                    runOnUiThread {
+                        progressDialog.dismiss()
+                        Toast.makeText(this@SettingsActivity, "Download failed: ${response.code}", Toast.LENGTH_SHORT).show()
+                    }
+                    return
+                }
+
+                val body = response.body
+                if (body == null) {
+                    runOnUiThread {
+                        progressDialog.dismiss()
+                        Toast.makeText(this@SettingsActivity, "Empty response from server", Toast.LENGTH_SHORT).show()
+                    }
+                    return
+                }
+
+                val unpackedData = pluginManager.unpackPlugin(body.byteStream())
+                runOnUiThread {
+                    progressDialog.dismiss()
+                    if (unpackedData != null) {
+                        currentPluginData = unpackedData
+                        txtSelectedPlugin?.text = plugin.name
+                        showPluginPreview(unpackedData, null)
+                    } else {
+                        Toast.makeText(this@SettingsActivity, "Failed to unpack downloaded plugin", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        })
     }
 
     private fun savePluginWithCredentials(resource: Resource, mainDialog: AlertDialog) {

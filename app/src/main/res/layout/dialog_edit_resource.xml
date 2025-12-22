@@ -17,12 +17,54 @@
             android:text="Plugin Package"
             android:textAppearance="?attr/textAppearanceSubtitle2" />
 
-        <Button
-            android:id="@+id/btnSelectPlugin"
-            android:layout_width="wrap_content"
+        <com.google.android.material.switchmaterial.SwitchMaterial
+            android:id="@+id/switchEnableLocal"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Select Plugin ZIP" />
+            android:text="Enable Local Options"
+            android:checked="false" />
+
+        <LinearLayout
+            android:id="@+id/importButtonsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="8dp">
+
+            <Button
+                android:id="@+id/btnDownloadPlugin"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="GitHub Download" />
+
+            <LinearLayout
+                android:id="@+id/localOptionsContainer"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:visibility="gone"
+                android:layout_marginTop="4dp">
+
+                <Button
+                    android:id="@+id/btnSelectPlugin"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="4dp"
+                    android:text="Import File" />
+
+                <Button
+                    android:id="@+id/btnImportAsset"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="4dp"
+                    android:text="Import Asset" />
+
+            </LinearLayout>
+
+        </LinearLayout>
 
         <TextView
             android:id="@+id/txtSelectedPlugin"
