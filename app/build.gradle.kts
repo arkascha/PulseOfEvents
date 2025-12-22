@@ -113,9 +113,37 @@ if (pluginsSrcDir.exists() && pluginsSrcDir.isDirectory) {
     }
 }
 
-// Ensure plugins are packaged before assets are merged for all build variants
-tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+// Task to generate an index of all plugins
+val generatePluginsIndex = tasks.register("generatePluginsIndex") {
     dependsOn(zipPluginsTask)
+    doLast {
+        val index = mutableListOf<Map<String, String>>()
+        pluginsSrcDir.listFiles()?.filter { it.isDirectory }?.forEach { pluginDir ->
+            val configFile = file("${pluginDir}/config.json")
+            if (configFile.exists()) {
+                val content = configFile.readText()
+                val nameMatch = Regex("\"name\"\\s*:\\s*\"([^\"]+)\"").find(content)
+                val descMatch = Regex("\"description\"\\s*:\\s*\"([^\"]+)\"").find(content)
+                
+                val pluginName = nameMatch?.groupValues?.get(1) ?: pluginDir.name
+                val pluginDesc = descMatch?.groupValues?.get(1) ?: ""
+                
+                index.add(mapOf(
+                    "filename" to "${pluginDir.name}.pulse",
+                    "name" to pluginName,
+                    "description" to pluginDesc
+                ))
+            }
+        }
+        val indexFile = file("${pluginsOutputDir}/plugins_index.json")
+        indexFile.writeText(groovy.json.JsonOutput.toJson(index))
+        println("Generated plugin index at: ${indexFile.absolutePath}")
+    }
+}
+
+// Ensure plugins and index are packaged before assets are merged
+tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
+    dependsOn(generatePluginsIndex)
 }
 
 // Clean generated plugins

@@ -1,7 +1,7 @@
 package org.rustygnome.pulse.plugins
 
-import okhttp3.OkHttpClient
-import okhttp3.Request
+import android.util.Log
+import okhttp3.*
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
@@ -15,12 +15,12 @@ class GitHubPluginService {
         val url = "https://api.github.com/repos/$repoOwner/$repoName/releases"
         val request = Request.Builder().url(url).build()
 
-        client.newCall(request).enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: okhttp3.Call, e: IOException) {
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {
                 onError(e)
             }
 
-            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
+            override fun onResponse(call: Call, response: Response) {
                 if (!response.isSuccessful) {
                     onError(IOException("Unexpected code $response"))
                     return
@@ -28,35 +28,61 @@ class GitHubPluginService {
 
                 try {
                     val releasesJson = JSONArray(response.body?.string() ?: "[]")
-                    val plugins = mutableListOf<GitHubPlugin>()
+                    if (releasesJson.length() == 0) {
+                        onSuccess(emptyList())
+                        return
+                    }
+
+                    // We look into all releases for a plugins_index.json
+                    // and use it to map descriptions for the assets found in that same release.
+                    val allPlugins = mutableListOf<GitHubPlugin>()
 
                     for (i in 0 until releasesJson.length()) {
                         val release = releasesJson.getJSONObject(i)
-                        val body = release.optString("body", "")
                         val assets = release.getJSONArray("assets")
+                        var indexAsset: JSONObject? = null
+                        val pulseAssets = mutableMapOf<String, String>()
+
                         for (j in 0 until assets.length()) {
                             val asset = assets.getJSONObject(j)
                             val name = asset.getString("name")
-                            val label = asset.optString("label", "")
-                            
-                            if (name.endsWith(".pulse")) {
-                                // Prefer asset label (if set in GitHub Release UI)
-                                // Otherwise try to parse the release body for "pluginname: description"
-                                val individualDescription = when {
-                                    label.isNotEmpty() -> label
-                                    else -> findDescriptionInBody(body, name) ?: body
-                                }
-
-                                plugins.add(GitHubPlugin(
-                                    name = name.removeSuffix(".pulse"),
-                                    downloadUrl = asset.getString("browser_download_url"),
-                                    releaseName = release.getString("name"),
-                                    description = individualDescription
-                                ))
+                            if (name == "plugins_index.json") {
+                                indexAsset = asset
+                            } else if (name.endsWith(".pulse")) {
+                                pulseAssets[name] = asset.getString("browser_download_url")
                             }
                         }
+
+                        if (indexAsset != null) {
+                            fetchIndex(indexAsset.getString("browser_download_url")) { indexJson ->
+                                val releaseName = release.getString("name")
+                                for (k in 0 until indexJson.length()) {
+                                    val item = indexJson.getJSONObject(k)
+                                    val filename = item.getString("filename")
+                                    val downloadUrl = pulseAssets[filename]
+                                    if (downloadUrl != null) {
+                                        allPlugins.add(GitHubPlugin(
+                                            name = item.optString("name", filename.removeSuffix(".pulse")),
+                                            downloadUrl = downloadUrl,
+                                            releaseName = releaseName,
+                                            description = item.optString("description", "")
+                                        ))
+                                    }
+                                }
+                                // If this was the last release to process, we could call onSuccess.
+                                // But since network calls are async, we need a better way to coordinate.
+                                // Simplification: Just use the latest release that has an index.
+                                if (allPlugins.isNotEmpty()) {
+                                    onSuccess(allPlugins)
+                                }
+                            }
+                            return // Exit after finding the first (latest) valid index
+                        }
                     }
-                    onSuccess(plugins)
+                    
+                    // Fallback if no index found: use previous logic or empty
+                    onSuccess(emptyList())
+
                 } catch (e: Exception) {
                     onError(e)
                 }
@@ -64,15 +90,20 @@ class GitHubPluginService {
         })
     }
 
-    private fun findDescriptionInBody(body: String, fileName: String): String? {
-        val nameWithoutExt = fileName.removeSuffix(".pulse")
-        val patterns = listOf("$nameWithoutExt:", "$fileName:")
-        return body.lines()
-            .map { it.trim() }
-            .firstOrNull { line -> 
-                patterns.any { p -> line.startsWith(p, ignoreCase = true) } 
+    private fun fetchIndex(url: String, onDownloaded: (JSONArray) -> Unit) {
+        val request = Request.Builder().url(url).build()
+        client.newCall(request).enqueue(object : Callback {
+            override fun onFailure(call: Call, e: IOException) {}
+            override fun onResponse(call: Call, response: Response) {
+                if (response.isSuccessful) {
+                    try {
+                        onDownloaded(JSONArray(response.body?.string() ?: "[]"))
+                    } catch (e: Exception) {
+                        Log.e("GitHubPluginService", "Error parsing index", e)
+                    }
+                }
             }
-            ?.substringAfter(":")?.trim()
+        })
     }
 
     data class GitHubPlugin(
