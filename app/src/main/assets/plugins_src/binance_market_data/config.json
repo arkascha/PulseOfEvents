@@ -1,0 +1,12 @@
+{
+  "name": "Binance Market Data",
+  "type": "WEBSOCKET",
+  "description": "Live BTC/USDT and ETH/USDT trades mapped to snares. BTC buys play 'Snare - Nine Oh Nine!', ETH buys play 'Snare - Eight Oh Eight!'. Market maker sells play 'Snare - Analog'. Volume scales with quantity and pitch scales with price.",
+  "webSocketUrl": "wss://stream.binance.com:9443/stream?streams=btcusdt@trade/ethusdt@trade",
+  "acousticStyle": "99Sounds Drum Samples II",
+  "eventSounds": [
+    "Snare - Nine Oh Nine!",
+    "Snare - Eight Oh Eight!",
+    "Snare - Analog"
+  ]
+}

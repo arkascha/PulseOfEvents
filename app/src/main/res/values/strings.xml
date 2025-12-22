@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">PulsingDroid</string>
+    <string name="event_source_prompt">Select an Event Source</string>
+    <string name="acoustic_style_prompt">Select an Acoustic Style</string>
+    <string name="action_settings">Settings</string>
+</resources>

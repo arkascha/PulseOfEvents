@@ -1,0 +1,20 @@
+// Random Chaos Generator Mapping
+// This script runs every time a new random event is triggered.
+
+var samples = [
+    "Kick - It", "Perc - Box", "Snare - OG", "Clap - Neat", "Clap - Tape", "Kick - 1985", "Kick - Edgy", "Kick - Hard", "Kick - Juno", "Kick - Pots", "Kick - Tekk", "Kick - Tron", "Snare - GNR", "Snare - Jet", "Snare - VHS", "Hats - Metal", "Hats - Micro", "Hats - Noise", "Hats - Pedal", "Hats - Salty", "Hats - Sweet", "Hats - Vinyl", "Hats - Wonky", "Hats - Zippo", "Kick - Juicy", "Kick - Mecha", "Kick - Neato", "Kick - Quake", "Kick - Retro", "Kick - Sonya", "Kick - Tight", "Perc - Tambo", "Snare - LoFi", "Snare - USSR", "Clap - Flange", "Clap - Liquid", "Hats - Sizzle", "Kick - Boiler", "Kick - Duster", "Kick - Lorida", "Kick - Shower", "Perc - Tomtom", "Perc - Wobble", "Snare - Retro", "Snare - Tight", "Snare - Urban", "Snare - Vinyl", "Clap - Giannis", "Clap - Vinyl 1", "Clap - Vinyl 2", "Hats - Stutter", "Kick - Low Rez", "Kick - Nailgun", "Kick - Swooshy", "Perc - Kung Fu", "Perc - Skipper", "Perc - Transit", "Snare - Analog", "Kick - Darkroom", "Kick - Fistpump", "Kick - Glitcher", "Perc - Analog 1", "Perc - Analog 2", "Snare - Breathe", "Snare - Crushed", "Snare - Duotone", "Snare - Frogger", "Snare - Lastbar", "Snare - Offgrid", "Snare - Piccolo", "Snare - Slammer", "Snare - Snapper", "Snare - Suction", "Snare - Trapped", "Clap - Crackle 1", "Clap - Crackle 2", "Clap - Crackle 3", "Clap - Crackle 4", "Kick - Chipsynth", "Kick - Devastate", "Kick - Rummmmble", "Kick - Thumpster", "Snare - Blackout", "Snare - Cassette", "Snare - Nu Disco", "Snare - Papercut", "Snare - Smoochie", "Snare - Tapestop", "Hats - Massamolla", "Kick - Roundabout", "Kick - Slow & Low", "Perc - Retrostick", "Snare - Datasette", "Snare - Verbotron", "Hats - Springwater", "Kick - Coffee Shop", "Kick - Grandmaster", "Kick - Showstopper", "Perc - Springboard", "Snare - 1982 Drive", "Kick - Ocean Breeze", "Perc - Old Computer", "Kick - ASAC Schrader", "Kick - Borefest 2021", "Perc - Digital Noise", "Snare - Hype Machine", "Snare - Double Barrel", "Snare - Nine Oh Nine!", "Snare - Eight Oh Eight!", "Snare - Clappers Delight"
+];
+
+// Pick a random sample from the array
+var randomIdx = Math.floor(Math.random() * samples.length);
+
+// Result determines sound playback
+var result = {
+    sample: samples[randomIdx],
+    // Pitch: 0.5 to 2.0
+    pitch: 0.5 + (Math.random() * 1.5),
+    // Volume: 0.3 to 1.0
+    volume: 0.3 + (Math.random() * 0.7)
+};
+
+result;

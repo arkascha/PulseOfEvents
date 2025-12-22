@@ -1,0 +1,10 @@
+{
+  "name": "Rhythmic Chaos",
+  "type": "RHYTHM",
+  "description": "Generates musical bursts using rhythmic patterns like quadruplets, triplets, and fast runs. Each burst uses a single sound with an ascending or descending pitch scale.",
+  "eventFile": "chaos",
+  "acousticStyle": "99Sounds Drum Samples II",
+  "eventSounds": [
+    "Kick - Tekk", "Snare - OG", "Perc - Box", "Hats - Metal", "Clap - Tape", "Kick - Juno", "Snare - VHS"
+  ]
+}

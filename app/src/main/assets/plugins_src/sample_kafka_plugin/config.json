@@ -1,0 +1,11 @@
+{
+  "name": "E-Commerce Live Pulse",
+  "type": "KAFKA",
+  "description": "Kafka stream of order events. 'ORDER_CREATED' triggers a kick, 'SHIPMENT_SENT' a snare, and 'PAYMENT_FAILED' a nasty percussion sound. Volume scales with order amount.",
+  "bootstrapServers": "localhost:9092",
+  "topic": "de.hlg.lastmile.orders",
+  "apiKey": "${KAFKA_KEY}",
+  "apiSecret": "${KAFKA_SECRET}",
+  "acousticStyle": "99Sounds Percussion I",
+  "eventSounds": ["kick-808", "snare-808", "cowbell-808", "perc-nasty"]
+}
