@@ -7,7 +7,7 @@ import android.util.Log
 import okhttp3.*
 import org.rustygnome.pulse.audio.Synthesizer
 import org.rustygnome.pulse.data.SecurityHelper
-import org.rustygnome.pulse.plugins.ScriptEvaluator
+import org.rustygnome.pulse.pulses.ScriptEvaluator
 import java.util.concurrent.TimeUnit
 
 class WebSocketPlayerService : Service(), PlayerService {
@@ -39,7 +39,7 @@ class WebSocketPlayerService : Service(), PlayerService {
         val scriptContent = intent?.getStringExtra("script_content")
         val eventSounds = intent?.getStringArrayListExtra("event_sounds")
         val acousticStyle = intent?.getStringExtra("acoustic_style")
-        val pluginId = intent?.getStringExtra("plugin_id")
+        val pulseId = intent?.getStringExtra("pulse_id")
         resourceId = intent?.getLongExtra("resource_id", -1L) ?: -1L
 
         Log.i(TAG, "onStartCommand: Starting for URL $url")
@@ -54,7 +54,7 @@ class WebSocketPlayerService : Service(), PlayerService {
                 payload = payload?.let { resolvePlaceholders(it, credentials) }
             }
 
-            synthesizer.loadStyle(acousticStyle, eventSounds, pluginId)
+            synthesizer.loadStyle(acousticStyle, eventSounds, pulseId)
             scriptEvaluator = ScriptEvaluator(scriptContent)
             connectWebSocket(url, payload)
         } else {

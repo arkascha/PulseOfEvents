@@ -12,7 +12,7 @@
             android:id="@+id/settingsToolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
-            app:title="Manage Event Sources"
+            app:title="Manage Pulses"
             app:navigationIcon="@android:drawable/ic_menu_revert" />
 
     </com.google.android.material.appbar.AppBarLayout>
@@ -35,7 +35,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|end"
         android:layout_margin="16dp"
-        android:contentDescription="Add New Resource"
+        android:contentDescription="Add New Pulse"
         app:srcCompat="@android:drawable/ic_input_add" />
 
 </androidx.coordinatorlayout.widget.CoordinatorLayout>

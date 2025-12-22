@@ -1,4 +1,4 @@
-package org.rustygnome.pulse.plugins
+package org.rustygnome.pulse.pulses
 
 import android.util.Log
 import okhttp3.*
@@ -6,12 +6,12 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.IOException
 
-class GitHubPluginService {
+class GitHubPulseService {
     private val client = OkHttpClient()
     private val repoOwner = "arkascha"
     private val repoName = "PulseOfEvents"
 
-    fun fetchAvailablePlugins(onSuccess: (List<GitHubPlugin>) -> Unit, onError: (Exception) -> Unit) {
+    fun fetchAvailablePulses(onSuccess: (List<GitHubPulse>) -> Unit, onError: (Exception) -> Unit) {
         val url = "https://api.github.com/repos/$repoOwner/$repoName/releases"
         val request = Request.Builder().url(url).build()
 
@@ -33,9 +33,9 @@ class GitHubPluginService {
                         return
                     }
 
-                    // We look into all releases for a plugins_index.json
+                    // We look into all releases for a pulses_index.json
                     // and use it to map descriptions for the assets found in that same release.
-                    val allPlugins = mutableListOf<GitHubPlugin>()
+                    val allPulses = mutableListOf<GitHubPulse>()
 
                     for (i in 0 until releasesJson.length()) {
                         val release = releasesJson.getJSONObject(i)
@@ -46,7 +46,7 @@ class GitHubPluginService {
                         for (j in 0 until assets.length()) {
                             val asset = assets.getJSONObject(j)
                             val name = asset.getString("name")
-                            if (name == "plugins_index.json") {
+                            if (name == "pulses_index.json") {
                                 indexAsset = asset
                             } else if (name.endsWith(".pulse")) {
                                 pulseAssets[name] = asset.getString("browser_download_url")
@@ -61,7 +61,7 @@ class GitHubPluginService {
                                     val filename = item.getString("filename")
                                     val downloadUrl = pulseAssets[filename]
                                     if (downloadUrl != null) {
-                                        allPlugins.add(GitHubPlugin(
+                                        allPulses.add(GitHubPulse(
                                             name = item.optString("name", filename.removeSuffix(".pulse")),
                                             downloadUrl = downloadUrl,
                                             releaseName = releaseName,
@@ -69,18 +69,14 @@ class GitHubPluginService {
                                         ))
                                     }
                                 }
-                                // If this was the last release to process, we could call onSuccess.
-                                // But since network calls are async, we need a better way to coordinate.
-                                // Simplification: Just use the latest release that has an index.
-                                if (allPlugins.isNotEmpty()) {
-                                    onSuccess(allPlugins)
+                                if (allPulses.isNotEmpty()) {
+                                    onSuccess(allPulses)
                                 }
                             }
                             return // Exit after finding the first (latest) valid index
                         }
                     }
                     
-                    // Fallback if no index found: use previous logic or empty
                     onSuccess(emptyList())
 
                 } catch (e: Exception) {
@@ -99,14 +95,14 @@ class GitHubPluginService {
                     try {
                         onDownloaded(JSONArray(response.body?.string() ?: "[]"))
                     } catch (e: Exception) {
-                        Log.e("GitHubPluginService", "Error parsing index", e)
+                        Log.e("GitHubPulseService", "Error parsing index", e)
                     }
                 }
             }
         })
     }
 
-    data class GitHubPlugin(
+    data class GitHubPulse(
         val name: String,
         val downloadUrl: String,
         val releaseName: String,

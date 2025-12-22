@@ -14,16 +14,16 @@ import androidx.recyclerview.widget.RecyclerView
 import org.rustygnome.pulse.R
 import org.rustygnome.pulse.data.Resource
 
-class PluginPlaybackAdapter(
+class PulsePlaybackAdapter(
     private val onPlayPauseClick: (Resource, Boolean) -> Unit,
     private val onInfoClick: (Resource) -> Unit,
     private val onStartDrag: (RecyclerView.ViewHolder) -> Unit = {}
-) : ListAdapter<Resource, PluginPlaybackAdapter.ViewHolder>(DiffCallback) {
+) : ListAdapter<Resource, PulsePlaybackAdapter.ViewHolder>(DiffCallback) {
 
     private var playingResourceId: Long = -1L
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val name: TextView = view.findViewById(R.id.txtPluginName)
+        val name: TextView = view.findViewById(R.id.txtPulseName)
         val infoBtn: ImageButton = view.findViewById(R.id.btnInfo)
         val playPauseBtn: ImageButton = view.findViewById(R.id.btnPlayPause)
         val dragHandle: ImageView = view.findViewById(R.id.imgDragHandle)
@@ -31,7 +31,7 @@ class PluginPlaybackAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_plugin_playback, parent, false)
+            .inflate(R.layout.item_pulse_playback, parent, false)
         return ViewHolder(view)
     }
 

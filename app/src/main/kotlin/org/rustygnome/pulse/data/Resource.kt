@@ -8,10 +8,10 @@ data class Resource(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val name: String,
     val description: String? = null,
-    val pluginType: String? = null, // e.g. "KAFKA", "WEBSOCKET", "FILE"
-    val type: ResourceType = ResourceType.PLUGIN,
-    // Plugin specific
-    val pluginId: String,
+    val pulseType: String? = null, // e.g. "KAFKA", "WEBSOCKET", "FILE"
+    val type: ResourceType = ResourceType.PULSE,
+    // Pulse specific
+    val pulseId: String,
     val configContent: String, // Store raw config.json to preserve all fields and placeholders
     val scriptContent: String,
     // Extracted configuration for quick access/display
@@ -29,7 +29,7 @@ data class Resource(
 )
 
 enum class ResourceType {
-    PLUGIN, KAFKA, FILE, WEBSOCKET
+    PULSE, KAFKA, FILE, WEBSOCKET
 }
 
 enum class FileFormat {

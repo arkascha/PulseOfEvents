@@ -1,4 +1,4 @@
-package org.rustygnome.pulse.plugins
+package org.rustygnome.pulse.pulses
 
 import android.util.Log
 import org.mozilla.javascript.Context
@@ -37,8 +37,8 @@ class ScriptEvaluator(private val script: String) {
             val eventObject = rhino.evaluateString(scope, "($eventJson)", "event_parsing", 1, null)
             scope.put("event", scope, eventObject)
             
-            // Execute the plugin script using the persistent scope
-            val result = rhino.evaluateString(scope, script, "plugin_script", 1, null)
+            // Execute the pulse script using the persistent scope
+            val result = rhino.evaluateString(scope, script, "pulse_script", 1, null)
             
             if (result is ScriptableObject) {
                 return PlaybackParams(

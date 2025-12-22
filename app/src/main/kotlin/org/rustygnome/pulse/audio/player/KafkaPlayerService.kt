@@ -12,7 +12,7 @@ import org.apache.kafka.common.serialization.StringDeserializer
 import org.json.JSONObject
 import org.rustygnome.pulse.audio.Synthesizer
 import org.rustygnome.pulse.data.SecurityHelper
-import org.rustygnome.pulse.plugins.ScriptEvaluator
+import org.rustygnome.pulse.pulses.ScriptEvaluator
 import java.time.Duration
 import java.util.Properties
 
@@ -56,7 +56,7 @@ class KafkaPlayerService : Service(), PlayerService {
         val eventSounds = intent?.getStringArrayListExtra("event_sounds")
         val acousticStyle = intent?.getStringExtra("acoustic_style")
         
-        val pluginId = intent?.getStringExtra("plugin_id")
+        val pulseId = intent?.getStringExtra("pulse_id")
         val scriptContent = intent?.getStringExtra("script_content")
 
         if (bootstrapServers != null && topic != null && eventSounds != null && acousticStyle != null) {
@@ -74,7 +74,7 @@ class KafkaPlayerService : Service(), PlayerService {
 
             if (!isRunning) {
                 isRunning = true
-                synthesizer.loadStyle(acousticStyle, eventSounds, pluginId)
+                synthesizer.loadStyle(acousticStyle, eventSounds, pulseId)
                 
                 if (scriptContent != null) {
                     scriptEvaluator = ScriptEvaluator(scriptContent)

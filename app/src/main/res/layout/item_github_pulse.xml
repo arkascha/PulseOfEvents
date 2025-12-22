@@ -14,7 +14,7 @@
         android:orientation="vertical">
 
         <TextView
-            android:id="@+id/pluginName"
+            android:id="@+id/pulseName"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textAppearance="?attr/textAppearanceSubtitle1"
@@ -22,7 +22,7 @@
             android:textColor="?attr/colorAccent" />
 
         <TextView
-            android:id="@+id/pluginDescription"
+            android:id="@+id/pulseDescription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"

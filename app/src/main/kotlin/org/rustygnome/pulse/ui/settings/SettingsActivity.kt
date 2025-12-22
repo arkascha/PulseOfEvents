@@ -30,8 +30,8 @@ import org.rustygnome.pulse.data.AppDatabase
 import org.rustygnome.pulse.data.Resource
 import org.rustygnome.pulse.data.ResourceType
 import org.rustygnome.pulse.data.SecurityHelper
-import org.rustygnome.pulse.plugins.GitHubPluginService
-import org.rustygnome.pulse.plugins.PluginManager
+import org.rustygnome.pulse.pulses.GitHubPulseService
+import org.rustygnome.pulse.pulses.PulseManager
 import java.io.IOException
 import java.util.Collections
 import java.util.Locale
@@ -39,15 +39,15 @@ import java.util.Locale
 class SettingsActivity : AppCompatActivity() {
 
     private lateinit var db: AppDatabase
-    private lateinit var adapter: ResourceAdapter
+    private lateinit var adapter: PulseSettingsAdapter
     private lateinit var securityHelper: SecurityHelper
-    private lateinit var pluginManager: PluginManager
-    private lateinit var githubService: GitHubPluginService
+    private lateinit var pulseManager: PulseManager
+    private lateinit var githubService: GitHubPulseService
     private var resourceList: MutableList<Resource> = mutableListOf()
     private lateinit var itemTouchHelper: ItemTouchHelper
 
-    private var txtSelectedPlugin: TextView? = null
-    private var currentPluginData: PluginManager.PluginData? = null
+    private var txtSelectedPulse: TextView? = null
+    private var currentPulseData: PulseManager.PulseData? = null
     private var activeEditDialog: AlertDialog? = null
 
     // Preview fields
@@ -62,15 +62,15 @@ class SettingsActivity : AppCompatActivity() {
     private var txtCredentialsHeader: TextView? = null
     private val credentialInputs = mutableMapOf<String, EditText>()
 
-    private val pluginPickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+    private val pulsePickerLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == RESULT_OK) {
             val uri = result.data?.data ?: return@registerForActivityResult
-            currentPluginData = pluginManager.unpackPlugin(uri)
-            if (currentPluginData != null) {
-                txtSelectedPlugin?.text = uri.lastPathSegment ?: "Plugin unpacked"
-                showPluginPreview(currentPluginData!!, null, false)
+            currentPulseData = pulseManager.unpackPulse(uri)
+            if (currentPulseData != null) {
+                txtSelectedPulse?.text = uri.lastPathSegment ?: "Pulse unpacked"
+                showPulsePreview(currentPulseData!!, null, false)
             } else {
-                Toast.makeText(this, "Invalid Plugin ZIP", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Invalid Pulse ZIP", Toast.LENGTH_SHORT).show()
                 previewContainer?.visibility = View.GONE
             }
         }
@@ -89,11 +89,11 @@ class SettingsActivity : AppCompatActivity() {
             .fallbackToDestructiveMigration()
             .build()
         securityHelper = SecurityHelper(this)
-        pluginManager = PluginManager(this)
-        githubService = GitHubPluginService()
+        pulseManager = PulseManager(this)
+        githubService = GitHubPulseService()
 
         val recyclerView: RecyclerView = findViewById(R.id.resourceRecyclerView)
-        adapter = ResourceAdapter(
+        adapter = PulseSettingsAdapter(
             onEdit = { showEditDialog(it) },
             onDelete = { deleteResource(it) },
             onPlay = { selectAndPlay(it) },
@@ -167,11 +167,11 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun showEditDialog(resource: Resource?) {
-        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_edit_resource, null)
+        val dialogView = LayoutInflater.from(this).inflate(R.layout.dialog_edit_pulse, null)
         val switchEnableLocal = dialogView.findViewById<SwitchMaterial>(R.id.switchEnableLocal)
-        val btnSelectPlugin = dialogView.findViewById<Button>(R.id.btnSelectPlugin)
-        val btnDownloadPlugin = dialogView.findViewById<Button>(R.id.btnDownloadPlugin)
-        txtSelectedPlugin = dialogView.findViewById(R.id.txtSelectedPlugin)
+        val btnSelectPulse = dialogView.findViewById<Button>(R.id.btnSelectPulse)
+        val btnDownloadPulse = dialogView.findViewById<Button>(R.id.btnDownloadPulse)
+        txtSelectedPulse = dialogView.findViewById(R.id.txtSelectedPulse)
 
         previewContainer = dialogView.findViewById(R.id.previewContainer)
         previewTitle = dialogView.findViewById(R.id.previewTitle)
@@ -184,25 +184,25 @@ class SettingsActivity : AppCompatActivity() {
 
         switchEnableLocal.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
-                btnSelectPlugin.visibility = View.VISIBLE
-                btnDownloadPlugin.visibility = View.GONE
+                btnSelectPulse.visibility = View.VISIBLE
+                btnDownloadPulse.visibility = View.GONE
             } else {
-                btnSelectPlugin.visibility = View.GONE
-                btnDownloadPlugin.visibility = View.VISIBLE
+                btnSelectPulse.visibility = View.GONE
+                btnDownloadPulse.visibility = View.VISIBLE
             }
         }
 
-        btnSelectPlugin.setOnClickListener {
+        btnSelectPulse.setOnClickListener {
             val intent = Intent(Intent.ACTION_GET_CONTENT).apply { type = "*/*" }
-            pluginPickerLauncher.launch(intent)
+            pulsePickerLauncher.launch(intent)
         }
 
-        btnDownloadPlugin.setOnClickListener {
-            showGitHubPluginsDialog()
+        btnDownloadPulse.setOnClickListener {
+            showGitHubPulsesDialog()
         }
 
         val alertDialog = AlertDialog.Builder(this)
-            .setTitle(if (resource == null) "Add Plugin" else "Edit Plugin")
+            .setTitle(if (resource == null) "Add Pulse" else "Edit Pulse")
             .setView(dialogView)
             .setPositiveButton("Save", null)
             .setNegativeButton("Cancel", null)
@@ -213,14 +213,14 @@ class SettingsActivity : AppCompatActivity() {
         alertDialog.setOnShowListener {
             val saveButton = alertDialog.getButton(AlertDialog.BUTTON_POSITIVE)
             saveButton.setOnClickListener {
-                if (resource == null && currentPluginData == null) {
-                    Toast.makeText(this, "Please select a .pulse plugin", Toast.LENGTH_SHORT).show()
+                if (resource == null && currentPulseData == null) {
+                    Toast.makeText(this, "Please select a .pulse file", Toast.LENGTH_SHORT).show()
                     return@setOnClickListener
                 }
 
-                var pluginName = resource?.name ?: "Unnamed Plugin"
-                var pluginDescription = resource?.description
-                var pluginType = resource?.pluginType
+                var pulseName = resource?.name ?: "Unnamed Pulse"
+                var pulseDescription = resource?.description
+                var pulseType = resource?.pulseType
                 var bootstrap: String? = resource?.bootstrapServers
                 var topic: String? = resource?.topic
                 var apiKey: String? = resource?.apiKey
@@ -233,13 +233,13 @@ class SettingsActivity : AppCompatActivity() {
                 var timestampProperty: String? = resource?.timestampProperty
                 var configContent = resource?.configContent ?: ""
 
-                currentPluginData?.let { data ->
+                currentPulseData?.let { data ->
                     configContent = data.config
                     try {
                         val configJson = JSONObject(data.config)
-                        pluginName = configJson.optString("name", pluginName)
-                        pluginDescription = configJson.optString("description", pluginDescription)
-                        pluginType = configJson.optString("type", null)
+                        pulseName = configJson.optString("name", pulseName)
+                        pulseDescription = configJson.optString("description", pulseDescription)
+                        pulseType = configJson.optString("type", null)
                         bootstrap = configJson.optString("bootstrapServers", null)
                         topic = configJson.optString("topic", null)
                         apiKey = configJson.optString("apiKey", null)
@@ -257,7 +257,7 @@ class SettingsActivity : AppCompatActivity() {
                             eventSounds = list
                         }
                     } catch (e: Exception) {
-                        Log.e("SettingsActivity", "Error parsing plugin config", e)
+                        Log.e("SettingsActivity", "Error parsing pulse config", e)
                     }
                 }
 
@@ -281,13 +281,13 @@ class SettingsActivity : AppCompatActivity() {
 
                 val newResource = Resource(
                     id = resource?.id ?: 0,
-                    name = pluginName,
-                    description = pluginDescription,
-                    pluginType = pluginType,
-                    type = ResourceType.PLUGIN,
-                    pluginId = currentPluginData?.id ?: resource?.pluginId ?: "",
+                    name = pulseName,
+                    description = pulseDescription,
+                    pulseType = pulseType,
+                    type = ResourceType.PULSE,
+                    pulseId = currentPulseData?.id ?: resource?.pulseId ?: "",
                     configContent = configContent,
-                    scriptContent = currentPluginData?.script ?: resource?.scriptContent ?: "",
+                    scriptContent = currentPulseData?.script ?: resource?.scriptContent ?: "",
                     bootstrapServers = bootstrap,
                     topic = topic,
                     apiKey = encryptedApiKey,
@@ -302,80 +302,80 @@ class SettingsActivity : AppCompatActivity() {
                 )
 
                 CoroutineScope(Dispatchers.IO).launch {
-                    val existing = db.resourceDao().getAll().find { it.name == pluginName && it.id != resource?.id }
+                    val existing = db.resourceDao().getAll().find { it.name == pulseName && it.id != resource?.id }
                     withContext(Dispatchers.Main) {
                         if (existing != null) {
                             AlertDialog.Builder(this@SettingsActivity)
-                                .setTitle("Plugin Conflict")
-                                .setMessage("A plugin named '$pluginName' already exists. Do you want to replace it or load both?")
+                                .setTitle("Pulse Conflict")
+                                .setMessage("A pulse named '$pulseName' already exists. Do you want to replace it or load both?")
                                 .setPositiveButton("Replace") { _, _ ->
-                                    savePluginWithCredentials(newResource.copy(id = existing.id, position = existing.position), alertDialog)
+                                    savePulseWithCredentials(newResource.copy(id = existing.id, position = existing.position), alertDialog)
                                 }
                                 .setNeutralButton("Load Both") { _, _ ->
-                                    savePluginWithCredentials(newResource.copy(id = 0, position = (resourceList.maxOfOrNull { it.position }?.plus(1) ?: 0)), alertDialog)
+                                    savePulseWithCredentials(newResource.copy(id = 0, position = (resourceList.maxOfOrNull { it.position }?.plus(1) ?: 0)), alertDialog)
                                 }
                                 .setNegativeButton("Cancel", null)
                                 .show()
                         } else {
-                            savePluginWithCredentials(newResource, alertDialog)
+                            savePulseWithCredentials(newResource, alertDialog)
                         }
                     }
                 }
             }
 
             resource?.let {
-                txtSelectedPlugin?.text = "Plugin: ${it.pluginId}"
-                val mockData = PluginManager.PluginData(
-                    it.pluginId,
+                txtSelectedPulse?.text = "Pulse: ${it.pulseId}"
+                val mockData = PulseManager.PulseData(
+                    it.pulseId,
                     it.scriptContent,
                     it.configContent,
                     ""
                 )
-                showPluginPreview(mockData, it, false)
+                showPulsePreview(mockData, it, false)
             }
         }
 
         alertDialog.show()
     }
 
-    private fun showGitHubPluginsDialog() {
+    private fun showGitHubPulsesDialog() {
         val progressDialog = AlertDialog.Builder(this)
-            .setMessage("Fetching available plugins...")
+            .setMessage("Fetching available pulses...")
             .setCancelable(false)
             .show()
 
-        githubService.fetchAvailablePlugins(
-            onSuccess = { plugins ->
+        githubService.fetchAvailablePulses(
+            onSuccess = { pulses ->
                 runOnUiThread {
                     progressDialog.dismiss()
-                    if (plugins.isEmpty()) {
-                        Toast.makeText(this, "No plugins found online", Toast.LENGTH_SHORT).show()
+                    if (pulses.isEmpty()) {
+                        Toast.makeText(this, "No pulses found online", Toast.LENGTH_SHORT).show()
                         return@runOnUiThread
                     }
 
-                    val adapter = object : ArrayAdapter<GitHubPluginService.GitHubPlugin>(
-                        this, R.layout.item_github_plugin, plugins
+                    val adapter = object : ArrayAdapter<GitHubPulseService.GitHubPulse>(
+                        this, R.layout.item_github_pulse, pulses
                     ) {
                         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-                            val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.item_github_plugin, parent, false)
-                            val plugin = getItem(position)!!
-                            view.findViewById<TextView>(R.id.pluginName).text = plugin.name
-                            val descView = view.findViewById<TextView>(R.id.pluginDescription)
+                            val view = convertView ?: LayoutInflater.from(context).inflate(R.layout.item_github_pulse, parent, false)
+                            val pulse = getItem(position)!!
+                            view.findViewById<TextView>(R.id.pulseName).text = pulse.name
+                            val descView = view.findViewById<TextView>(R.id.pulseDescription)
 
-                            if (plugin.description.isNullOrBlank()) {
+                            if (pulse.description.isNullOrBlank()) {
                                 descView.visibility = View.GONE
                             } else {
                                 descView.visibility = View.VISIBLE
-                                descView.text = plugin.description
+                                descView.text = pulse.description
                             }
                             return view
                         }
                     }
 
                     AlertDialog.Builder(this)
-                        .setTitle("Select Plugin to Download")
+                        .setTitle("Select Pulse to Download")
                         .setAdapter(adapter) { _, which ->
-                            downloadAndUnpackPlugin(plugins[which])
+                            downloadAndUnpackPulse(pulses[which])
                         }
                         .setNegativeButton("Cancel", null)
                         .show()
@@ -384,20 +384,20 @@ class SettingsActivity : AppCompatActivity() {
             onError = { e ->
                 runOnUiThread {
                     progressDialog.dismiss()
-                    Toast.makeText(this, "Error fetching plugins: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "Error fetching pulses: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         )
     }
 
-    private fun downloadAndUnpackPlugin(plugin: GitHubPluginService.GitHubPlugin) {
+    private fun downloadAndUnpackPulse(pulse: GitHubPulseService.GitHubPulse) {
         val progressDialog = AlertDialog.Builder(this)
-            .setMessage("Downloading ${plugin.name}...")
+            .setMessage("Downloading ${pulse.name}...")
             .setCancelable(false)
             .show()
 
         val client = OkHttpClient()
-        val request = Request.Builder().url(plugin.downloadUrl).build()
+        val request = Request.Builder().url(pulse.downloadUrl).build()
 
         client.newCall(request).enqueue(object : okhttp3.Callback {
             override fun onFailure(call: okhttp3.Call, e: IOException) {
@@ -425,22 +425,22 @@ class SettingsActivity : AppCompatActivity() {
                     return
                 }
 
-                val unpackedData = pluginManager.unpackPlugin(body.byteStream())
+                val unpackedData = pulseManager.unpackPulse(body.byteStream())
                 runOnUiThread {
                     progressDialog.dismiss()
                     if (unpackedData != null) {
-                        currentPluginData = unpackedData
-                        txtSelectedPlugin?.text = plugin.name
-                        showPluginPreview(unpackedData, null, true)
+                        currentPulseData = unpackedData
+                        txtSelectedPulse?.text = pulse.name
+                        showPulsePreview(unpackedData, null, true)
                     } else {
-                        Toast.makeText(this@SettingsActivity, "Failed to unpack downloaded plugin", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SettingsActivity, "Failed to unpack downloaded pulse", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
         })
     }
 
-    private fun savePluginWithCredentials(resource: Resource, mainDialog: AlertDialog) {
+    private fun savePulseWithCredentials(resource: Resource, mainDialog: AlertDialog) {
         val credentials = credentialInputs.filterKeys { it != "apiKey" && it != "apiSecret" }
             .mapValues { it.value.text.toString() }
         
@@ -464,17 +464,17 @@ class SettingsActivity : AppCompatActivity() {
         }
     }
 
-    private fun showPluginPreview(data: PluginManager.PluginData, resource: Resource?, isDownload: Boolean) {
+    private fun showPulsePreview(data: PulseManager.PulseData, resource: Resource?, isDownload: Boolean) {
         try {
             val config = JSONObject(data.config)
             previewContainer?.visibility = View.VISIBLE
-            previewTitle?.text = config.optString("name", "Unnamed Plugin")
+            previewTitle?.text = config.optString("name", "Unnamed Pulse")
             
             val desc = config.optString("description", resource?.description ?: "")
             previewDescription?.text = desc
             previewDescription?.visibility = if (desc.isNotEmpty()) View.VISIBLE else View.GONE
 
-            val type = config.optString("type", resource?.pluginType ?: "")
+            val type = config.optString("type", resource?.pulseType ?: "")
             previewType?.text = "Type: $type"
 
             val details = StringBuilder()
@@ -500,7 +500,7 @@ class SettingsActivity : AppCompatActivity() {
             
             // Force add apiKey and apiSecret for KAFKA
             val requiredFields = placeholders.toMutableSet()
-            if (type == "KAFKA" || config.has("topic") || resource?.pluginType == "KAFKA") {
+            if (type == "KAFKA" || config.has("topic") || resource?.pulseType == "KAFKA") {
                 requiredFields.add("apiKey")
                 requiredFields.add("apiSecret")
             }
@@ -512,10 +512,10 @@ class SettingsActivity : AppCompatActivity() {
                     text = "Back to List"
                     setOnClickListener {
                         previewContainer?.visibility = View.GONE
-                        currentPluginData = null
-                        txtSelectedPlugin?.text = "No plugin selected"
+                        currentPulseData = null
+                        txtSelectedPulse?.text = "No pulse selected"
                         updateCredentialsUI(emptySet(), null)
-                        showGitHubPluginsDialog()
+                        showGitHubPulsesDialog()
                     }
                 }
             } else {
@@ -566,8 +566,8 @@ class SettingsActivity : AppCompatActivity() {
                     topMargin = 8
                 }
                 val label = when(key) {
-                    "apiKey" -> "Kafka API Key"
-                    "apiSecret" -> "Kafka API Secret"
+                    "apiKey" -> "Kafka Key"
+                    "apiSecret" -> "Kafka Secret"
                     else -> key.replace("_", " ").lowercase(Locale.ROOT).replaceFirstChar { it.titlecase(Locale.ROOT) }
                 }
                 hint = label
@@ -590,13 +590,13 @@ class SettingsActivity : AppCompatActivity() {
 
     private fun deleteResource(resource: Resource) {
         AlertDialog.Builder(this)
-            .setTitle("Delete Plugin")
-            .setMessage("Are you sure you want to delete the plugin '${resource.name}'?")
+            .setTitle("Delete Pulse")
+            .setMessage("Are you sure you want to delete the pulse '${resource.name}'?")
             .setPositiveButton("Delete") { _, _ ->
                 CoroutineScope(Dispatchers.IO).launch {
                     db.resourceDao().delete(resource)
-                    if (resource.pluginId != null) {
-                        pluginManager.deletePlugin(resource.pluginId)
+                    if (resource.pulseId != null) {
+                        pulseManager.deletePulse(resource.pulseId)
                     }
                     securityHelper.deleteCredentials(resource.id)
                     loadResources()

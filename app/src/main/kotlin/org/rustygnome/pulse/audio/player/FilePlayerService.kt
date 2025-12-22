@@ -9,8 +9,7 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.rustygnome.pulse.audio.Synthesizer
 import org.rustygnome.pulse.data.FileFormat
-import org.rustygnome.pulse.plugins.PluginManager
-import org.rustygnome.pulse.plugins.ScriptEvaluator
+import org.rustygnome.pulse.pulses.ScriptEvaluator
 import java.io.BufferedReader
 import java.io.File
 import java.io.InputStreamReader
@@ -46,20 +45,20 @@ class FilePlayerService : Service(), PlayerService {
         val acousticStyle = intent?.getStringExtra("acoustic_style")
         val timestampProperty = intent?.getStringExtra("timestamp_property")
         
-        val pluginId = intent?.getStringExtra("plugin_id")
+        val pulseId = intent?.getStringExtra("pulse_id")
         val scriptContent = intent?.getStringExtra("script_content")
 
         if (eventFileUri != null && fileFormat != null && eventSounds != null && acousticStyle != null) {
             if (!isPlaying) {
                 isPlaying = true
-                synthesizer.loadStyle(acousticStyle, eventSounds, pluginId)
+                synthesizer.loadStyle(acousticStyle, eventSounds, pulseId)
                 
                 if (scriptContent != null) {
                     scriptEvaluator = ScriptEvaluator(scriptContent)
                 }
                 
                 playerThread = thread {
-                    playEvents(eventFileUri, fileFormat, pluginId, timestampProperty)
+                    playEvents(eventFileUri, fileFormat, pulseId, timestampProperty)
                 }
             }
         } else {
@@ -78,7 +77,7 @@ class FilePlayerService : Service(), PlayerService {
         sendBroadcast(intent)
     }
 
-    private fun playEvents(uriString: String, format: String, pluginId: String?, timestampProperty: String?) {
+    private fun playEvents(uriString: String, format: String, pulseId: String?, timestampProperty: String?) {
         try {
             val content = when {
                 uriString.startsWith("content://") -> {
@@ -87,12 +86,12 @@ class FilePlayerService : Service(), PlayerService {
                         BufferedReader(InputStreamReader(inputStream)).readText()
                     }
                 }
-                pluginId != null -> {
-                    val internalFile = File(File(filesDir, "plugins/$pluginId"), uriString)
+                pulseId != null -> {
+                    val internalFile = File(File(filesDir, "pulses/$pulseId"), uriString)
                     if (internalFile.exists()) {
                         internalFile.readText()
                     } else {
-                        Log.e(TAG, "Internal plugin file not found: ${internalFile.absolutePath}")
+                        Log.e(TAG, "Internal pulse file not found: ${internalFile.absolutePath}")
                         null
                     }
                 }

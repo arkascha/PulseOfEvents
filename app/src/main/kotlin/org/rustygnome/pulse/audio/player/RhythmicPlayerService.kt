@@ -6,11 +6,11 @@ import android.os.IBinder
 import android.util.Log
 import org.json.JSONObject
 import org.rustygnome.pulse.audio.Synthesizer
-import org.rustygnome.pulse.plugins.ScriptEvaluator
+import org.rustygnome.pulse.pulses.ScriptEvaluator
 import java.util.Random
 import kotlin.concurrent.thread
 
-class RhythmicChaosService : Service(), PlayerService {
+class RhythmicPlayerService : Service(), PlayerService {
 
     private lateinit var synthesizer: Synthesizer
     private var scriptEvaluator: ScriptEvaluator? = null
@@ -34,12 +34,12 @@ class RhythmicChaosService : Service(), PlayerService {
         val scriptContent = intent?.getStringExtra("script_content")
         val eventSounds = intent?.getStringArrayListExtra("event_sounds")
         val acousticStyle = intent?.getStringExtra("acoustic_style")
-        val pluginId = intent?.getStringExtra("plugin_id")
+        val pulseId = intent?.getStringExtra("pulse_id")
 
         if (scriptContent != null && eventSounds != null && acousticStyle != null) {
             if (!isRunning) {
                 isRunning = true
-                synthesizer.loadStyle(acousticStyle, eventSounds, pluginId)
+                synthesizer.loadStyle(acousticStyle, eventSounds, pulseId)
                 scriptEvaluator = ScriptEvaluator(scriptContent)
                 
                 workerThread = thread {

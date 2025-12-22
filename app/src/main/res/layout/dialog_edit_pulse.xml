@@ -22,7 +22,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginEnd="8dp"
-                android:text="Local import"
+                android:text="Local pulse"
                 android:textAppearance="?attr/textAppearanceSubtitle2" />
 
             <com.google.android.material.switchmaterial.SwitchMaterial
@@ -39,26 +39,27 @@
             android:orientation="vertical">
 
             <Button
-                android:id="@+id/btnDownloadPlugin"
+                android:id="@+id/btnDownloadPulse"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Download plugin" />
+                android:text="DOWNLOAD PULSE" />
 
             <Button
-                android:id="@+id/btnSelectPlugin"
+                android:id="@+id/btnSelectPulse"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
                 android:visibility="gone"
-                android:text="Load local plugin" />
+                android:text="LOAD LOCAL PULSE" />
 
         </LinearLayout>
 
         <TextView
-            android:id="@+id/txtSelectedPlugin"
+            android:id="@+id/txtSelectedPulse"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="No plugin selected" />
+            android:text="No pulse selected" />
 
         <!-- Preview Section -->
         <LinearLayout

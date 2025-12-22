@@ -27,7 +27,7 @@ import org.rustygnome.pulse.audio.player.FilePlayerService
 import org.rustygnome.pulse.audio.player.KafkaPlayerService
 import org.rustygnome.pulse.audio.player.WebSocketPlayerService
 import org.rustygnome.pulse.audio.player.RandomPlayerService
-import org.rustygnome.pulse.audio.player.RhythmicChaosService
+import org.rustygnome.pulse.audio.player.RhythmicPlayerService
 import org.rustygnome.pulse.ui.settings.SettingsActivity
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -37,8 +37,8 @@ class MainActivity : AppCompatActivity() {
     private var currentlyPlayingId: Long = -1L
     private var pendingResourceId: Long = -1L
 
-    private lateinit var pluginRecyclerView: RecyclerView
-    private lateinit var adapter: PluginPlaybackAdapter
+    private lateinit var pulseRecyclerView: RecyclerView
+    private lateinit var adapter: PulsePlaybackAdapter
     private lateinit var db: AppDatabase
     private lateinit var emptyView: TextView
     private var resourceList: MutableList<Resource> = mutableListOf()
@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity() {
                 FilePlayerService.ACTION_PLAYER_STOPPED,
                 WebSocketPlayerService.ACTION_PLAYER_STOPPED,
                 RandomPlayerService.ACTION_PLAYER_STOPPED,
-                RhythmicChaosService.ACTION_PLAYER_STOPPED -> {
+                RhythmicPlayerService.ACTION_PLAYER_STOPPED -> {
                     if (stoppedId == currentlyPlayingId || stoppedId == -1L) {
                         onPlaybackStopped()
                     }
@@ -96,10 +96,10 @@ class MainActivity : AppCompatActivity() {
             .fallbackToDestructiveMigration()
             .build()
 
-        pluginRecyclerView = findViewById(R.id.pluginRecyclerView)
+        pulseRecyclerView = findViewById(R.id.pulseRecyclerView)
         emptyView = findViewById(R.id.emptyView)
 
-        adapter = PluginPlaybackAdapter(
+        adapter = PulsePlaybackAdapter(
             onPlayPauseClick = { resource, shouldPlay ->
                 if (shouldPlay) {
                     startPlayback(resource)
@@ -107,10 +107,10 @@ class MainActivity : AppCompatActivity() {
                     stopPlayback()
                 }
             },
-            onInfoClick = { showPluginDescription(it) },
+            onInfoClick = { showPulseDescription(it) },
             onStartDrag = { viewHolder -> itemTouchHelper.startDrag(viewHolder) }
         )
-        pluginRecyclerView.adapter = adapter
+        pulseRecyclerView.adapter = adapter
 
         setupItemTouchHelper()
         loadResources()
@@ -144,7 +144,7 @@ class MainActivity : AppCompatActivity() {
                 saveNewOrder()
             }
         })
-        itemTouchHelper.attachToRecyclerView(pluginRecyclerView)
+        itemTouchHelper.attachToRecyclerView(pulseRecyclerView)
     }
 
     private fun saveNewOrder() {
@@ -156,10 +156,10 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun showPluginDescription(resource: Resource) {
+    private fun showPulseDescription(resource: Resource) {
         AlertDialog.Builder(this)
             .setTitle(resource.name)
-            .setMessage(resource.description ?: "No description provided for this plugin.")
+            .setMessage(resource.description ?: "No description provided for this pulse.")
             .setPositiveButton("OK", null)
             .show()
     }
@@ -172,7 +172,7 @@ class MainActivity : AppCompatActivity() {
             addAction(FilePlayerService.ACTION_PLAYER_STOPPED)
             addAction(WebSocketPlayerService.ACTION_PLAYER_STOPPED)
             addAction(RandomPlayerService.ACTION_PLAYER_STOPPED)
-            addAction(RhythmicChaosService.ACTION_PLAYER_STOPPED)
+            addAction(RhythmicPlayerService.ACTION_PLAYER_STOPPED)
         }
         registerReceiver(playerReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
     }
@@ -260,17 +260,17 @@ class MainActivity : AppCompatActivity() {
         stopService(Intent(this, FilePlayerService::class.java))
         stopService(Intent(this, WebSocketPlayerService::class.java))
         stopService(Intent(this, RandomPlayerService::class.java))
-        stopService(Intent(this, RhythmicChaosService::class.java))
+        stopService(Intent(this, RhythmicPlayerService::class.java))
     }
 
     private fun startSelectedService(resource: Resource) {
         Log.i(TAG, "Starting service for resource: ${resource.name}")
         
         val serviceIntent = when {
-            resource.pluginType == "KAFKA" -> Intent(this, KafkaPlayerService::class.java)
-            resource.pluginType == "WEBSOCKET" -> Intent(this, WebSocketPlayerService::class.java)
-            resource.pluginType == "SIMULATION" -> Intent(this, RandomPlayerService::class.java)
-            resource.pluginType == "RHYTHM" -> Intent(this, RhythmicChaosService::class.java)
+            resource.pulseType == "KAFKA" -> Intent(this, KafkaPlayerService::class.java)
+            resource.pulseType == "WEBSOCKET" -> Intent(this, WebSocketPlayerService::class.java)
+            resource.pulseType == "SIMULATION" -> Intent(this, RandomPlayerService::class.java)
+            resource.pulseType == "RHYTHM" -> Intent(this, RhythmicPlayerService::class.java)
             else -> {
                 // Legacy detection or fallback
                 when {
@@ -283,7 +283,7 @@ class MainActivity : AppCompatActivity() {
         
         serviceIntent.apply {
             putExtra("resource_id", resource.id)
-            putExtra("plugin_id", resource.pluginId)
+            putExtra("pulse_id", resource.pulseId)
             putExtra("config_content", resource.configContent) // Pass the full config for placeholder resolution
             putExtra("script_content", resource.scriptContent)
             putStringArrayListExtra("event_sounds", ArrayList(resource.eventSounds))

@@ -19,7 +19,7 @@
             android:padding="12dp">
 
             <TextView
-                android:id="@+id/txtPluginName"
+                android:id="@+id/txtPulseName"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
@@ -31,7 +31,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Plugin information"
+                android:contentDescription="Pulse information"
                 android:src="@android:drawable/ic_menu_help" />
 
             <ImageButton
@@ -39,7 +39,7 @@
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:background="?attr/selectableItemBackgroundBorderless"
-                android:contentDescription="Play or Pause plugin"
+                android:contentDescription="Play or Pause pulse"
                 android:src="@android:drawable/ic_media_play" />
 
         </LinearLayout>

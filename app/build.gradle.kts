@@ -8,31 +8,6 @@ android {
     namespace = "org.rustygnome.pulse"
     compileSdk = 36
 
-    flavorDimensions += "environment"
-    productFlavors {
-        create("dev") {
-            dimension = "environment"
-            buildConfigField("String", "KAFKA_BOOTSTRAP_SERVERS", "\"localhost:9092\"")
-            buildConfigField("String", "KAFKA_TOPIC", "\"dev_topic\"")
-            buildConfigField("String", "KAFKA_API_KEY", "\"your_dev_api_key\"")
-            buildConfigField("String", "KAFKA_API_SECRET", "\"your_dev_api_secret\"")
-        }
-        create("int") {
-            dimension = "environment"
-            buildConfigField("String", "KAFKA_BOOTSTRAP_SERVERS", "\"int.server:9092\"")
-            buildConfigField("String", "KAFKA_TOPIC", "\"int_topic\"")
-            buildConfigField("String", "KAFKA_API_KEY", "\"your_int_api_key\"")
-            buildConfigField("String", "KAFKA_API_SECRET", "\"your_int_api_secret\"")
-        }
-        create("prd") {
-            dimension = "environment"
-            buildConfigField("String", "KAFKA_BOOTSTRAP_SERVERS", "\"your_kafka_bootstrap_server:9092\"")
-            buildConfigField("String", "KAFKA_TOPIC", "\"your_kafka_topic\"")
-            buildConfigField("String", "KAFKA_API_KEY", "\"your_prd_api_key\"")
-            buildConfigField("String", "KAFKA_API_SECRET", "\"your_prd_api_secret\"")
-        }
-    }
-
     defaultConfig {
         applicationId = "org.rustygnome.pulse"
         minSdk = 27
@@ -61,24 +36,24 @@ android {
     }
 }
 
-// Automatically discover and package plugins
-val pluginsSrcDir = project.file("src/main/assets/plugins_src")
-val pluginsOutputDir = project.file("src/main/assets/plugins")
+// Automatically discover and package pulses
+val pulsesSrcDir = project.file("src/main/assets/pulses_src")
+val pulsesOutputDir = project.file("src/main/assets/pulses")
 
-val zipPluginsTask = tasks.register("zipPlugins")
+val zipPulsesTask = tasks.register("zipPulses")
 
-if (pluginsSrcDir.exists() && pluginsSrcDir.isDirectory) {
-    pluginsSrcDir.listFiles()?.filter { it.isDirectory }?.forEach { pluginDir ->
-        val pluginName = pluginDir.name
-        val zipTask = tasks.register<Zip>("zipPlugin_$pluginName") {
-            archiveFileName.set("$pluginName.pulse")
-            destinationDirectory.set(pluginsOutputDir)
+if (pulsesSrcDir.exists() && pulsesSrcDir.isDirectory) {
+    pulsesSrcDir.listFiles()?.filter { it.isDirectory }?.forEach { pulseDir ->
+        val pulseName = pulseDir.name
+        val zipTask = tasks.register<Zip>("zipPulse_$pulseName") {
+            archiveFileName.set("$pulseName.pulse")
+            destinationDirectory.set(pulsesOutputDir)
             
-            // Files from the plugin source folder
-            from(pluginDir)
+            // Files from the pulse source folder
+            from(pulseDir)
             
             // Logic to bundle the correct sounds based on config.json
-            val configFile = file("${pluginDir}/config.json")
+            val configFile = file("${pulseDir}/config.json")
             if (configFile.exists()) {
                 val content = configFile.readText()
                 val match = Regex("\"acousticStyle\"\\s*:\\s*\"([^\"]+)\"").find(content)
@@ -107,48 +82,48 @@ if (pluginsSrcDir.exists() && pluginsSrcDir.isDirectory) {
                 }
             }
         }
-        zipPluginsTask.configure {
+        zipPulsesTask.configure {
             dependsOn(zipTask)
         }
     }
 }
 
-// Task to generate an index of all plugins
-val generatePluginsIndex = tasks.register("generatePluginsIndex") {
-    dependsOn(zipPluginsTask)
+// Task to generate an index of all pulses
+val generatePulsesIndex = tasks.register("generatePulsesIndex") {
+    dependsOn(zipPulsesTask)
     doLast {
         val index = mutableListOf<Map<String, String>>()
-        pluginsSrcDir.listFiles()?.filter { it.isDirectory }?.forEach { pluginDir ->
-            val configFile = file("${pluginDir}/config.json")
+        pulsesSrcDir.listFiles()?.filter { it.isDirectory }?.forEach { pulseDir ->
+            val configFile = file("${pulseDir}/config.json")
             if (configFile.exists()) {
                 val content = configFile.readText()
                 val nameMatch = Regex("\"name\"\\s*:\\s*\"([^\"]+)\"").find(content)
                 val descMatch = Regex("\"description\"\\s*:\\s*\"([^\"]+)\"").find(content)
                 
-                val pluginName = nameMatch?.groupValues?.get(1) ?: pluginDir.name
-                val pluginDesc = descMatch?.groupValues?.get(1) ?: ""
+                val pulseName = nameMatch?.groupValues?.get(1) ?: pulseDir.name
+                val pulseDesc = descMatch?.groupValues?.get(1) ?: ""
                 
                 index.add(mapOf(
-                    "filename" to "${pluginDir.name}.pulse",
-                    "name" to pluginName,
-                    "description" to pluginDesc
+                    "filename" to "${pulseDir.name}.pulse",
+                    "name" to pulseName,
+                    "description" to pulseDesc
                 ))
             }
         }
-        val indexFile = file("${pluginsOutputDir}/plugins_index.json")
+        val indexFile = file("${pulsesOutputDir}/pulses_index.json")
         indexFile.writeText(groovy.json.JsonOutput.toJson(index))
-        println("Generated plugin index at: ${indexFile.absolutePath}")
+        println("Generated pulse index at: ${indexFile.absolutePath}")
     }
 }
 
-// Ensure plugins and index are packaged before assets are merged
+// Ensure pulses and index are packaged before assets are merged
 tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.configureEach {
-    dependsOn(generatePluginsIndex)
+    dependsOn(generatePulsesIndex)
 }
 
-// Clean generated plugins
+// Clean generated pulses
 tasks.clean {
-    delete(pluginsOutputDir)
+    delete(pulsesOutputDir)
 }
 
 dependencies {

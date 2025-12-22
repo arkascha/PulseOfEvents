@@ -10,7 +10,7 @@
 .DS_Store
 /build
 /captures
-/app/src/main/assets/plugins
+/app/src/main/assets/pulses
 .externalNativeBuild
 .cxx
 local.properties

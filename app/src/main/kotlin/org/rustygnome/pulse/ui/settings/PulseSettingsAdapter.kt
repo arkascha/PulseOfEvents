@@ -13,14 +13,13 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import org.rustygnome.pulse.R
 import org.rustygnome.pulse.data.Resource
-import org.rustygnome.pulse.data.ResourceType
 
-class ResourceAdapter(
+class PulseSettingsAdapter(
     private val onEdit: (Resource) -> Unit,
     private val onDelete: (Resource) -> Unit,
     private val onPlay: (Resource) -> Unit,
     private val onStartDrag: (RecyclerView.ViewHolder) -> Unit = {}
-) : ListAdapter<Resource, ResourceAdapter.ViewHolder>(DiffCallback) {
+) : ListAdapter<Resource, PulseSettingsAdapter.ViewHolder>(DiffCallback) {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val name: TextView = view.findViewById(R.id.txtResourceName)
@@ -33,7 +32,7 @@ class ResourceAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val view = LayoutInflater.from(parent.context)
-            .inflate(R.layout.item_resource, parent, false)
+            .inflate(R.layout.item_pulse, parent, false)
         return ViewHolder(view)
     }
 

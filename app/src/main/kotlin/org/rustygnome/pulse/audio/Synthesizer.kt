@@ -4,7 +4,7 @@ import android.content.Context
 import android.media.AudioAttributes
 import android.media.SoundPool
 import android.util.Log
-import org.rustygnome.pulse.plugins.PluginManager
+import org.rustygnome.pulse.pulses.PulseManager
 import java.io.File
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -21,9 +21,9 @@ class Synthesizer(private val context: Context) {
         private const val TAG = "Synthesizer"
     }
 
-    fun loadStyle(style: String, eventSounds: List<String>, pluginId: String? = null) {
+    fun loadStyle(style: String, eventSounds: List<String>, pulseId: String? = null) {
         release()
-        Log.i(TAG, "Loading style: $style for event sounds: $eventSounds (Plugin: $pluginId)")
+        Log.i(TAG, "Loading style: $style for event sounds: $eventSounds (Pulse: $pulseId)")
 
         // Initialize executor for the duration of this style
         playbackExecutor = Executors.newSingleThreadExecutor()
@@ -37,8 +37,8 @@ class Synthesizer(private val context: Context) {
             .setAudioAttributes(audioAttributes)
             .build()
 
-        val pluginManager = PluginManager(context)
-        val pluginSoundsDir = pluginId?.let { pluginManager.getSoundsDir(it) }
+        val pulseManager = PulseManager(context)
+        val pulseSoundsDir = pulseId?.let { pulseManager.getSoundsDir(it) }
 
         val folderName = when (style) {
             "99Sounds Percussion I", "99Sounds Drum Samples I" -> "99Sounds/Drum Samples I"
@@ -60,16 +60,16 @@ class Synthesizer(private val context: Context) {
         for (soundName in eventSounds) {
             var loaded = false
 
-            // 1. Try loading from Plugin folder
-            if (pluginSoundsDir != null && pluginSoundsDir.exists()) {
-                val pluginFile = findFileFuzzy(pluginSoundsDir, soundName)
-                if (pluginFile != null) {
+            // 1. Try loading from Pulse folder
+            if (pulseSoundsDir != null && pulseSoundsDir.exists()) {
+                val pulseFile = findFileFuzzy(pulseSoundsDir, soundName)
+                if (pulseFile != null) {
                     try {
-                        soundIdMap[soundName] = soundPool!!.load(pluginFile.absolutePath, 1)
-                        Log.d(TAG, "Loaded '$soundName' from plugin: ${pluginFile.absolutePath}")
+                        soundIdMap[soundName] = soundPool!!.load(pulseFile.absolutePath, 1)
+                        Log.d(TAG, "Loaded '$soundName' from pulse: ${pulseFile.absolutePath}")
                         loaded = true
                     } catch (e: Exception) {
-                        Log.w(TAG, "Failed to load plugin sound: ${pluginFile.absolutePath}", e)
+                        Log.w(TAG, "Failed to load pulse sound: ${pulseFile.absolutePath}", e)
                     }
                 }
             }

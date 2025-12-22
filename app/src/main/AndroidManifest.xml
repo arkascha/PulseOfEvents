@@ -33,7 +33,7 @@
         <service android:name=".audio.player.FilePlayerService" />
         <service android:name=".audio.player.WebSocketPlayerService" />
         <service android:name=".audio.player.RandomPlayerService" />
-        <service android:name=".audio.player.RhythmicChaosService" />
+        <service android:name=".audio.player.RhythmicPlayerService" />
     </application>
 
 </manifest>

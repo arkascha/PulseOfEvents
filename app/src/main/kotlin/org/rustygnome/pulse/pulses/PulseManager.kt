@@ -1,4 +1,4 @@
-package org.rustygnome.pulse.plugins
+package org.rustygnome.pulse.pulses
 
 import android.content.Context
 import android.net.Uri
@@ -8,30 +8,30 @@ import java.io.FileOutputStream
 import java.io.InputStream
 import java.util.zip.ZipInputStream
 
-class PluginManager(private val context: Context) {
+class PulseManager(private val context: Context) {
 
-    private val pluginsDir = File(context.filesDir, "plugins")
+    private val pulsesDir = File(context.filesDir, "pulses")
 
     init {
-        if (!pluginsDir.exists()) {
-            pluginsDir.mkdirs()
+        if (!pulsesDir.exists()) {
+            pulsesDir.mkdirs()
         }
     }
 
-    fun unpackPlugin(uri: Uri): PluginData? {
+    fun unpackPulse(uri: Uri): PulseData? {
         return try {
             context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                unpackPlugin(inputStream)
+                unpackPulse(inputStream)
             }
         } catch (e: Exception) {
-            Log.e("PluginManager", "Error opening URI stream", e)
+            Log.e("PulseManager", "Error opening URI stream", e)
             null
         }
     }
 
-    fun unpackPlugin(inputStream: InputStream): PluginData? {
-        val pluginId = System.currentTimeMillis().toString()
-        val targetDir = File(pluginsDir, pluginId)
+    fun unpackPulse(inputStream: InputStream): PulseData? {
+        val pulseId = System.currentTimeMillis().toString()
+        val targetDir = File(pulsesDir, pulseId)
         targetDir.mkdirs()
 
         var scriptContent: String? = null
@@ -61,29 +61,29 @@ class PluginManager(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            Log.e("PluginManager", "Error unpacking plugin", e)
+            Log.e("PulseManager", "Error unpacking pulse", e)
             targetDir.deleteRecursively()
             return null
         }
 
         return if (scriptContent != null && configContent != null) {
-            PluginData(pluginId, scriptContent!!, configContent!!, targetDir.absolutePath)
+            PulseData(pulseId, scriptContent!!, configContent!!, targetDir.absolutePath)
         } else {
-            Log.e("PluginManager", "Plugin missing mapping.js or config.json")
+            Log.e("PulseManager", "Pulse missing mapping.js or config.json")
             targetDir.deleteRecursively()
             null
         }
     }
 
-    fun getSoundsDir(pluginId: String): File {
-        return File(File(pluginsDir, pluginId), "sounds")
+    fun getSoundsDir(pulseId: String): File {
+        return File(File(pulsesDir, pulseId), "sounds")
     }
 
-    fun deletePlugin(pluginId: String) {
-        File(pluginsDir, pluginId).deleteRecursively()
+    fun deletePulse(pulseId: String) {
+        File(pulsesDir, pulseId).deleteRecursively()
     }
 
-    data class PluginData(
+    data class PulseData(
         val id: String,
         val script: String,
         val config: String,
