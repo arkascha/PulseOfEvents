@@ -118,6 +118,11 @@ tasks.matching { it.name.startsWith("merge") && it.name.endsWith("Assets") }.con
     dependsOn(zipPluginsTask)
 }
 
+// Clean generated plugins
+tasks.clean {
+    delete(pluginsOutputDir)
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
