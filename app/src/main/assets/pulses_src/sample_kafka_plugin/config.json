@@ -4,8 +4,6 @@
   "description": "Kafka stream of order events. Volume scales with order amount.",
   "bootstrapServers": "localhost:9092",
   "topic": "de.hlg.lastmile.orders",
-  "apiKey": "${KAFKA_KEY}",
-  "apiSecret": "${KAFKA_SECRET}",
   "acousticStyle": "99Sounds Percussion I",
   "eventSounds": ["kick-808", "snare-808", "cowbell-808", "perc-nasty"]
 }

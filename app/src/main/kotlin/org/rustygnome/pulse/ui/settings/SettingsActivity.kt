@@ -247,8 +247,13 @@ class SettingsActivity : AppCompatActivity() {
                         pulseType = configJson.optString("type", null)
                         bootstrap = configJson.optString("bootstrapServers", null)
                         topic = configJson.optString("topic", null)
-                        apiKey = configJson.optString("apiKey", null)
-                        apiSecret = configJson.optString("apiSecret", null)
+                        
+                        // Handle credentials separately for Kafka
+                        if (pulseType != "KAFKA") {
+                            apiKey = configJson.optString("apiKey", null)
+                            apiSecret = configJson.optString("apiSecret", null)
+                        }
+                        
                         wsUrl = configJson.optString("webSocketUrl", null)
                         wsPayload = configJson.optString("webSocketPayload", null)
                         eventFile = configJson.optString("eventFile", null)
@@ -270,8 +275,8 @@ class SettingsActivity : AppCompatActivity() {
                 for ((key, input) in credentialInputs) {
                     if (input.text.toString().trim().isEmpty()) {
                         val label = when(key) {
-                            "apiKey" -> "Kafka API Key"
-                            "apiSecret" -> "Kafka API Secret"
+                            "apiKey" -> "Kafka Key"
+                            "apiSecret" -> "Kafka Secret"
                             else -> key.replace("_", " ").lowercase(Locale.ROOT).replaceFirstChar { it.titlecase(Locale.ROOT) }
                         }
                         Toast.makeText(this, "$label is mandatory!", Toast.LENGTH_LONG).show()
@@ -281,8 +286,17 @@ class SettingsActivity : AppCompatActivity() {
                 }
 
                 // Encrypt entered credentials
-                val encryptedApiKey = securityHelper.encrypt(credentialInputs["apiKey"]?.text?.toString() ?: securityHelper.decrypt(apiKey))
-                val encryptedApiSecret = securityHelper.encrypt(credentialInputs["apiSecret"]?.text?.toString() ?: securityHelper.decrypt(apiSecret))
+                val encryptedApiKey = if (credentialInputs.containsKey("apiKey")) {
+                    securityHelper.encrypt(credentialInputs["apiKey"]?.text?.toString() ?: "")
+                } else {
+                    apiKey
+                }
+                
+                val encryptedApiSecret = if (credentialInputs.containsKey("apiSecret")) {
+                    securityHelper.encrypt(credentialInputs["apiSecret"]?.text?.toString() ?: "")
+                } else {
+                    apiSecret
+                }
 
                 val newResource = Resource(
                     id = resource?.id ?: 0,
@@ -503,16 +517,17 @@ class SettingsActivity : AppCompatActivity() {
             previewDetails?.text = details.toString()
             
             // Scan for placeholders in entire config JSON
-            val placeholders = findPlaceholders(data.config)
+            val placeholders = findPlaceholders(data.config).toMutableSet()
             
-            // Force add apiKey and apiSecret for KAFKA
-            val requiredFields = placeholders.toMutableSet()
-            if (type == "KAFKA" || config.has("topic") || resource?.pulseType == "KAFKA") {
-                requiredFields.add("apiKey")
-                requiredFields.add("apiSecret")
+            // Kafka uses hardcoded apiKey/apiSecret fields, remove potential legacy placeholders
+            if (type == "KAFKA") {
+                placeholders.remove("KAFKA_KEY")
+                placeholders.remove("KAFKA_SECRET")
+                placeholders.add("apiKey")
+                placeholders.add("apiSecret")
             }
             
-            updateCredentialsUI(requiredFields, resource)
+            updateCredentialsUI(placeholders, resource)
 
             if (isDownload) {
                 activeEditDialog?.getButton(AlertDialog.BUTTON_NEGATIVE)?.apply {
@@ -561,13 +576,16 @@ class SettingsActivity : AppCompatActivity() {
         
         // Load existing values if editing
         val existingPlaceholders = resource?.let { 
-            securityHelper.getCredentials(it.id, fields) 
+            securityHelper.getCredentials(it.id, fields.filter { f -> f != "apiKey" && f != "apiSecret" }.toSet()) 
         } ?: emptyMap()
 
         val existingApiKey = resource?.let { securityHelper.decrypt(it.apiKey) }
         val existingApiSecret = resource?.let { securityHelper.decrypt(it.apiSecret) }
 
-        fields.forEach { key ->
+        // Sort fields to ensure consistent order (apiKey, apiSecret, then others)
+        val sortedFields = fields.toList().sortedWith(compareBy({ it != "apiKey" }, { it != "apiSecret" }, { it }))
+
+        sortedFields.forEach { key ->
             val layout = TextInputLayout(this).apply {
                 layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                     topMargin = 8
