@@ -1,26 +1,24 @@
-// Violin Timed Simulator Mapping Script
+// Variable Timed Simulator Mapping Script (Oxygen)
 
 var result = {
-    sample: "violin-win-1", 
+    sample: "message-new-instant", 
     pitch: 1.0,
     volume: 0.5
 };
 
 // Access properties of the 'event' object
 if (event.type === "SUCCESS") {
-    var index = Math.floor(Math.random() * 5) + 1;
-    result.sample = "violin-win-" + index;
+    result.sample = "complete";
     result.volume = 0.7;
     result.pitch = 0.9 + (Math.random() * 0.2);
 } 
 else if (event.type === "FAILURE") {
-    var index = Math.floor(Math.random() * 5) + 1;
-    result.sample = "violin-lose-" + index;
+    result.sample = "dialog-error";
     result.volume = 0.8;
     result.pitch = 0.8 + (Math.random() * 0.4);
 }
 else if (event.type === "TICK") {
-    result.sample = "violin-win-5"; // Use a specific sound for ticks
+    result.sample = "message-new-instant"; 
     result.volume = 0.3;
     result.pitch = 0.5 + (Math.random() * 0.1);
 }

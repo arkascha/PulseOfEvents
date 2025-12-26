@@ -3,10 +3,10 @@
   "type": "WEBSOCKET",
   "description": "Live BTC/USDT and ETH/USDT trades on the Binance exchange. Volume scales with quantity and pitch scales with price.",
   "webSocketUrl": "wss://stream.binance.com:9443/stream?streams=btcusdt@trade/ethusdt@trade",
-  "acousticStyle": "99Sounds Drum Samples II",
+  "acousticStyle": "ds-cobald",
   "eventSounds": [
-    "Snare - Nine Oh Nine!",
-    "Snare - Eight Oh Eight!",
-    "Snare - Analog"
+    "outcome-success",
+    "message-new-instant",
+    "audio-volume-change"
   ]
 }

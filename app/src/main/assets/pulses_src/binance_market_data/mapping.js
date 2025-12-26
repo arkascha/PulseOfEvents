@@ -1,4 +1,4 @@
-// Binance Combined Trade Stream Mapping - Snares (99Sounds Drum Samples II)
+// Binance Combined Trade Stream Mapping - Snares (ds-cobald)
 // Handling both BTCUSDT and ETHUSDT
 
 // Initialize persistent state for price averages
@@ -10,7 +10,7 @@ var data = event.data || event;
 var symbol = data.s || "UNKNOWN";
 
 var result = {
-    sample: "Snare - Analog",
+    sample: "message-new-instant",
     pitch: 1.0,
     volume: 0.3
 };
@@ -42,14 +42,14 @@ result.volume = Math.min(0.3 + (quantity / divisor), 1.0);
 // 3. Sample Selection based on pressure and currency
 if (data.m === true) {
     // Sell-side pressure
-    result.sample = "Snare - Analog";
+    result.sample = "audio-volume-change";
     result.pitch = modulatedPitch * 0.9;
 } else {
     // Buy-side pressure
     if (symbol.indexOf("BTC") !== -1) {
-        result.sample = "Snare - Nine Oh Nine!";
+        result.sample = "outcome-success";
     } else {
-        result.sample = "Snare - Eight Oh Eight!";
+        result.sample = "message-new-instant";
     }
     result.pitch = modulatedPitch;
 }

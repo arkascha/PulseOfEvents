@@ -3,18 +3,12 @@
   "type": "FILE",
   "description": "A stream of events read from a local file. Uses variable, randomized timing. For testing purpose only.",
   "eventFile": "violin_events.json",
-  "acousticStyle": "orchestra_violin",
+  "acousticStyle": "oxygen",
   "timestampProperty": "timestamp",
   "eventSounds": [
-    "violin-win-1",
-    "violin-win-2",
-    "violin-win-3",
-    "violin-win-4",
-    "violin-win-5",
-    "violin-lose-1",
-    "violin-lose-2",
-    "violin-lose-3",
-    "violin-lose-4",
-    "violin-lose-5"
+    "message-new-instant",
+    "complete",
+    "dialog-warning",
+    "dialog-error"
   ]
 }

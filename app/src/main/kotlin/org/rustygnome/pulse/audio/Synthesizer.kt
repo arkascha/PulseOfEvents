@@ -6,6 +6,7 @@ import android.media.SoundPool
 import android.util.Log
 import org.rustygnome.pulse.pulses.PulseManager
 import java.io.File
+import java.io.FileOutputStream
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -40,6 +41,7 @@ class Synthesizer(private val context: Context) {
         val pulseManager = PulseManager(context)
         val pulseSoundsDir = pulseId?.let { pulseManager.getSoundsDir(it) }
 
+        // Folders now directly contain samples, no subfolders like 'stereo'
         val folderName = when (style) {
             "99Sounds Percussion I", "99Sounds Drum Samples I" -> "99Sounds/Drum Samples I"
             "99Sounds Percussion II", "99Sounds Drum Samples II" -> "99Sounds/Drum Samples II"
@@ -81,10 +83,23 @@ class Synthesizer(private val context: Context) {
             if (bestMatch != null) {
                 val assetPath = "sounds/$folderName/$bestMatch"
                 try {
-                    val descriptor = context.assets.openFd(assetPath)
-                    soundIdMap[soundName] = soundPool!!.load(descriptor, 1)
-                    Log.d(TAG, "Loaded '$soundName' from assets (matched '$bestMatch'): $assetPath")
-                    loaded = true
+                    try {
+                        val descriptor = context.assets.openFd(assetPath)
+                        soundIdMap[soundName] = soundPool!!.load(descriptor, 1)
+                        Log.d(TAG, "Loaded '$soundName' from assets (openFd): $assetPath")
+                        loaded = true
+                    } catch (e: Exception) {
+                        // Fallback: Copy to cache for formats or compressed assets that openFd cannot handle
+                        val cacheFile = File(context.cacheDir, "sound_cache_${normalize(bestMatch)}")
+                        context.assets.open(assetPath).use { input ->
+                            FileOutputStream(cacheFile).use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                        soundIdMap[soundName] = soundPool!!.load(cacheFile.absolutePath, 1)
+                        Log.d(TAG, "Loaded '$soundName' from assets (cached): $assetPath")
+                        loaded = true
+                    }
                 } catch (e: Exception) {
                     Log.w(TAG, "Asset load failed: $assetPath", e)
                 }
