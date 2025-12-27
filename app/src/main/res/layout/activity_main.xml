@@ -8,7 +8,15 @@
     android:fitsSystemWindows="true"
     tools:context=".ui.main.MainActivity">
 
+    <!-- Background Visualizer: Now a direct child to cover the full screen -->
+    <org.rustygnome.pulse.ui.main.PulseVisualizerView
+        android:id="@+id/pulseVisualizer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="?android:attr/colorBackground" />
+
     <com.google.android.material.appbar.AppBarLayout
+        android:id="@+id/appBarLayout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:fitsSystemWindows="true"

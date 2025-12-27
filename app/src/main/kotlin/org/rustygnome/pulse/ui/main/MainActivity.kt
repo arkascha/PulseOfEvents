@@ -9,12 +9,14 @@ import android.os.Bundle
 import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.MotionEvent
 import android.view.View
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.room.Room
+import com.google.android.material.appbar.AppBarLayout
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,11 +25,7 @@ import kotlinx.coroutines.withContext
 import org.rustygnome.pulse.R
 import org.rustygnome.pulse.data.AppDatabase
 import org.rustygnome.pulse.data.Resource
-import org.rustygnome.pulse.audio.player.FilePlayerService
-import org.rustygnome.pulse.audio.player.KafkaPlayerService
-import org.rustygnome.pulse.audio.player.WebSocketPlayerService
-import org.rustygnome.pulse.audio.player.RandomPlayerService
-import org.rustygnome.pulse.audio.player.RhythmicPlayerService
+import org.rustygnome.pulse.audio.player.*
 import org.rustygnome.pulse.ui.settings.SettingsActivity
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.ItemTouchHelper
@@ -38,17 +36,26 @@ class MainActivity : AppCompatActivity() {
     private var pendingResourceId: Long = -1L
 
     private lateinit var pulseRecyclerView: RecyclerView
+    private lateinit var appBarLayout: AppBarLayout
     private lateinit var adapter: PulsePlaybackAdapter
     private lateinit var db: AppDatabase
     private lateinit var emptyView: TextView
     private var resourceList: MutableList<Resource> = mutableListOf()
     private lateinit var itemTouchHelper: ItemTouchHelper
+    
+    private var visualizerView: PulseVisualizerView? = null
+    private var visualizerMode: PulseVisualizerView.Mode = PulseVisualizerView.Mode.RIPPLE
 
     private val playerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             val stoppedId = intent?.getLongExtra("resource_id", -1L) ?: -1L
             
             when (intent?.action) {
+                PlayerService.ACTION_PULSE_FIRE -> {
+                    val vol = intent.getFloatExtra(PlayerService.EXTRA_VOLUME, 1.0f)
+                    val pitch = intent.getFloatExtra(PlayerService.EXTRA_PITCH, 1.0f)
+                    visualizerView?.onPulse(vol, pitch)
+                }
                 KafkaPlayerService.ACTION_PLAYER_ERROR -> {
                     val errorMsg = intent.getStringExtra(KafkaPlayerService.EXTRA_ERROR_MESSAGE)
                     if (errorMsg != null) {
@@ -87,7 +94,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        Log.d(TAG, "onCreate: Activity created")
+        
+        visualizerView = findViewById(R.id.pulseVisualizer)
+        appBarLayout = findViewById(R.id.appBarLayout)
 
         setSupportActionBar(findViewById(R.id.toolbar))
         supportActionBar?.setDisplayShowTitleEnabled(false)
@@ -116,6 +125,16 @@ class MainActivity : AppCompatActivity() {
         loadResources()
     }
 
+    override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+        if (currentlyPlayingId != -1L && visualizerMode != PulseVisualizerView.Mode.NONE) {
+            if (ev?.action == MotionEvent.ACTION_DOWN) {
+                stopPlayback()
+                return true
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
+
     private fun setupItemTouchHelper() {
         itemTouchHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
@@ -135,9 +154,7 @@ class MainActivity : AppCompatActivity() {
                 return true
             }
 
-            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {
-                // No-op
-            }
+            override fun onSwiped(viewHolder: RecyclerView.ViewHolder, direction: Int) {}
 
             override fun clearView(recyclerView: RecyclerView, viewHolder: RecyclerView.ViewHolder) {
                 super.clearView(recyclerView, viewHolder)
@@ -167,6 +184,7 @@ class MainActivity : AppCompatActivity() {
     override fun onStart() {
         super.onStart()
         val filter = IntentFilter().apply {
+            addAction(PlayerService.ACTION_PULSE_FIRE)
             addAction(KafkaPlayerService.ACTION_PLAYER_ERROR)
             addAction(KafkaPlayerService.ACTION_PLAYER_STOPPED)
             addAction(FilePlayerService.ACTION_PLAYER_STOPPED)
@@ -192,6 +210,8 @@ class MainActivity : AppCompatActivity() {
     private fun onPlaybackStopped() {
         currentlyPlayingId = -1L
         adapter.clearPlayingResource()
+        visualizerView?.setPulseName(null)
+        updateUIVisibility(false)
     }
 
     private fun playResourceById(resourceId: Long) {
@@ -218,6 +238,25 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
+        
+        val prefs = getSharedPreferences("pulse_prefs", Context.MODE_PRIVATE)
+        val modeStr = prefs.getString("visualizer_mode", "RIPPLE") ?: "RIPPLE"
+        visualizerMode = try {
+            PulseVisualizerView.Mode.valueOf(modeStr)
+        } catch (e: Exception) {
+            PulseVisualizerView.Mode.RIPPLE
+        }
+        
+        visualizerView?.setMode(visualizerMode)
+        visualizerView?.visibility = if (visualizerMode == PulseVisualizerView.Mode.NONE) View.GONE else View.VISIBLE
+        
+        if (currentlyPlayingId != -1L) {
+            val res = resourceList.find { it.id == currentlyPlayingId }
+            visualizerView?.setPulseName(res?.name)
+        }
+        
+        updateUIVisibility(currentlyPlayingId != -1L)
+        
         loadResources()
     }
 
@@ -227,10 +266,7 @@ class MainActivity : AppCompatActivity() {
             withContext(Dispatchers.Main) {
                 resourceList = list.toMutableList()
                 adapter.submitList(resourceList.toList())
-                
                 emptyView.visibility = if (resourceList.isEmpty()) View.VISIBLE else View.GONE
-                
-                // Handle pending playback request from Settings
                 if (pendingResourceId != -1L) {
                     playResourceById(pendingResourceId)
                     pendingResourceId = -1L
@@ -246,6 +282,8 @@ class MainActivity : AppCompatActivity() {
 
         currentlyPlayingId = resource.id
         adapter.setPlayingResource(resource.id)
+        visualizerView?.setPulseName(resource.name)
+        updateUIVisibility(true)
         
         Log.i(TAG, "Starting playback for source: ${resource.name}")
         startSelectedService(resource)
@@ -255,12 +293,27 @@ class MainActivity : AppCompatActivity() {
         Log.i(TAG, "Stopping all playback")
         currentlyPlayingId = -1L
         adapter.clearPlayingResource()
+        visualizerView?.setPulseName(null)
+        updateUIVisibility(false)
         
         stopService(Intent(this, KafkaPlayerService::class.java))
         stopService(Intent(this, FilePlayerService::class.java))
         stopService(Intent(this, WebSocketPlayerService::class.java))
         stopService(Intent(this, RandomPlayerService::class.java))
         stopService(Intent(this, RhythmicPlayerService::class.java))
+    }
+
+    private fun updateUIVisibility(isPlaying: Boolean) {
+        val hideUI = isPlaying && visualizerMode != PulseVisualizerView.Mode.NONE
+        val duration = 400L
+        
+        if (hideUI) {
+            pulseRecyclerView.animate().alpha(0f).setDuration(duration).start()
+            appBarLayout.animate().translationY(-appBarLayout.height.toFloat()).setDuration(duration).start()
+        } else {
+            pulseRecyclerView.animate().alpha(1f).setDuration(duration).start()
+            appBarLayout.animate().translationY(0f).setDuration(duration).start()
+        }
     }
 
     private fun startSelectedService(resource: Resource) {
@@ -272,7 +325,6 @@ class MainActivity : AppCompatActivity() {
             resource.pulseType == "SIMULATION" -> Intent(this, RandomPlayerService::class.java)
             resource.pulseType == "RHYTHM" -> Intent(this, RhythmicPlayerService::class.java)
             else -> {
-                // Legacy detection or fallback
                 when {
                     resource.webSocketUrl != null -> Intent(this, WebSocketPlayerService::class.java)
                     resource.topic != null -> Intent(this, KafkaPlayerService::class.java)
@@ -284,12 +336,10 @@ class MainActivity : AppCompatActivity() {
         serviceIntent.apply {
             putExtra("resource_id", resource.id)
             putExtra("pulse_id", resource.pulseId)
-            putExtra("config_content", resource.configContent) // Pass the full config for placeholder resolution
+            putExtra("config_content", resource.configContent)
             putExtra("script_content", resource.scriptContent)
             putStringArrayListExtra("event_sounds", ArrayList(resource.eventSounds))
             putExtra("acoustic_style", resource.acousticStyle)
-            
-            // Legacy/Display fields (still passed for convenience or until services are fully refactored)
             putExtra("ws_url", resource.webSocketUrl)
             putExtra("ws_payload", resource.webSocketPayload)
             putExtra("bootstrap_servers", resource.bootstrapServers)

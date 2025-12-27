@@ -1,9 +1,11 @@
 package org.rustygnome.pulse.audio
 
 import android.content.Context
+import android.content.Intent
 import android.media.AudioAttributes
 import android.media.SoundPool
 import android.util.Log
+import org.rustygnome.pulse.audio.player.PlayerService
 import org.rustygnome.pulse.pulses.PulseManager
 import java.io.File
 import java.io.FileOutputStream
@@ -41,7 +43,6 @@ class Synthesizer(private val context: Context) {
         val pulseManager = PulseManager(context)
         val pulseSoundsDir = pulseId?.let { pulseManager.getSoundsDir(it) }
 
-        // Folders now directly contain samples, no subfolders like 'stereo'
         val folderName = when (style) {
             "99Sounds Percussion I", "99Sounds Drum Samples I" -> "99Sounds/Drum Samples I"
             "99Sounds Percussion II", "99Sounds Drum Samples II" -> "99Sounds/Drum Samples II"
@@ -89,7 +90,6 @@ class Synthesizer(private val context: Context) {
                         Log.d(TAG, "Loaded '$soundName' from assets (openFd): $assetPath")
                         loaded = true
                     } catch (e: Exception) {
-                        // Fallback: Copy to cache for formats or compressed assets that openFd cannot handle
                         val cacheFile = File(context.cacheDir, "sound_cache_${normalize(bestMatch)}")
                         context.assets.open(assetPath).use { input ->
                             FileOutputStream(cacheFile).use { output ->
@@ -150,6 +150,14 @@ class Synthesizer(private val context: Context) {
             if (soundId != null) {
                 Log.v(TAG, "Background playback for sample: $sampleName (pitch: $pitch, vol: $volume)")
                 soundPool?.play(soundId, volume, volume, 1, 0, pitch)
+                
+                // Broadcast for visualizer
+                val intent = Intent(PlayerService.ACTION_PULSE_FIRE).apply {
+                    putExtra(PlayerService.EXTRA_VOLUME, volume)
+                    putExtra(PlayerService.EXTRA_PITCH, pitch)
+                    setPackage(context.packageName)
+                }
+                context.sendBroadcast(intent)
             } else {
                 Log.w(TAG, "Sample not loaded: $sampleName. Available: ${soundIdMap.keys}")
             }
@@ -159,7 +167,6 @@ class Synthesizer(private val context: Context) {
     fun release() {
         Log.i(TAG, "Releasing synthesizer resources.")
         
-        // Gracefully shut down the playback thread
         playbackExecutor?.shutdown()
         playbackExecutor = null
 

@@ -1,5 +1,6 @@
 package org.rustygnome.pulse.ui.settings
 
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
@@ -92,7 +93,6 @@ class SettingsActivity : AppCompatActivity() {
         pulseManager = PulseManager(this)
         githubService = GitHubPulseService()
 
-        // Set version display in main layout
         val txtAppVersionMain: TextView = findViewById(R.id.txtAppVersionMain)
         val versionName = packageManager.getPackageInfo(packageName, 0).versionName ?: "unknown"
         txtAppVersionMain.text = "Version: $versionName"
@@ -111,8 +111,31 @@ class SettingsActivity : AppCompatActivity() {
         findViewById<FloatingActionButton>(R.id.addResourceFab).setOnClickListener {
             showEditDialog(null)
         }
+        
+        setupVisualizerDropdown()
 
         loadResources()
+    }
+    
+    private fun setupVisualizerDropdown() {
+        val modes = arrayOf("None", "Ripples", "Particles", "Generative Network")
+        val modeValues = arrayOf("NONE", "RIPPLE", "PARTICLES", "PROCESSING")
+        
+        val adapter = ArrayAdapter(this, android.R.layout.simple_dropdown_item_1line, modes)
+        val autoCompleteTextView: AutoCompleteTextView = findViewById(R.id.dropdownVisualizer)
+        autoCompleteTextView.setAdapter(adapter)
+        
+        val prefs = getSharedPreferences("pulse_prefs", Context.MODE_PRIVATE)
+        val currentMode = prefs.getString("visualizer_mode", "RIPPLE") ?: "RIPPLE"
+        
+        // Find and set initial text
+        val currentIndex = modeValues.indexOf(currentMode).coerceAtLeast(0)
+        autoCompleteTextView.setText(modes[currentIndex], false)
+        
+        autoCompleteTextView.setOnItemClickListener { _, _, position, _ ->
+            val selectedValue = modeValues[position]
+            prefs.edit().putString("visualizer_mode", selectedValue).apply()
+        }
     }
 
     private fun setupItemTouchHelper(recyclerView: RecyclerView) {
@@ -248,7 +271,6 @@ class SettingsActivity : AppCompatActivity() {
                         bootstrap = configJson.optString("bootstrapServers", null)
                         topic = configJson.optString("topic", null)
                         
-                        // Handle credentials separately for Kafka
                         if (pulseType != "KAFKA") {
                             apiKey = configJson.optString("apiKey", null)
                             apiSecret = configJson.optString("apiSecret", null)
@@ -271,7 +293,6 @@ class SettingsActivity : AppCompatActivity() {
                     }
                 }
 
-                // Mandatory field validation for ALL displayed credential inputs
                 for ((key, input) in credentialInputs) {
                     if (input.text.toString().trim().isEmpty()) {
                         val label = when(key) {
@@ -285,7 +306,6 @@ class SettingsActivity : AppCompatActivity() {
                     }
                 }
 
-                // Encrypt entered credentials
                 val encryptedApiKey = if (credentialInputs.containsKey("apiKey")) {
                     securityHelper.encrypt(credentialInputs["apiKey"]?.text?.toString() ?: "")
                 } else {
@@ -473,7 +493,6 @@ class SettingsActivity : AppCompatActivity() {
                 resource.id
             }
             
-            // Save personal tokens securely
             if (credentials.isNotEmpty()) {
                 securityHelper.saveCredentials(id, credentials)
             }
@@ -516,10 +535,8 @@ class SettingsActivity : AppCompatActivity() {
             details.append("\nStyle: ${config.optString("acousticStyle", "Default")}")
             previewDetails?.text = details.toString()
             
-            // Scan for placeholders in entire config JSON
             val placeholders = findPlaceholders(data.config).toMutableSet()
             
-            // Kafka uses hardcoded apiKey/apiSecret fields, remove potential legacy placeholders
             if (type == "KAFKA") {
                 placeholders.remove("KAFKA_KEY")
                 placeholders.remove("KAFKA_SECRET")
@@ -574,7 +591,6 @@ class SettingsActivity : AppCompatActivity() {
         txtCredentialsHeader?.visibility = View.VISIBLE
         container.visibility = View.VISIBLE
         
-        // Load existing values if editing
         val existingPlaceholders = resource?.let { 
             securityHelper.getCredentials(it.id, fields.filter { f -> f != "apiKey" && f != "apiSecret" }.toSet()) 
         } ?: emptyMap()
@@ -582,7 +598,6 @@ class SettingsActivity : AppCompatActivity() {
         val existingApiKey = resource?.let { securityHelper.decrypt(it.apiKey) }
         val existingApiSecret = resource?.let { securityHelper.decrypt(it.apiSecret) }
 
-        // Sort fields to ensure consistent order (apiKey, apiSecret, then others)
         val sortedFields = fields.toList().sortedWith(compareBy({ it != "apiKey" }, { it != "apiSecret" }, { it }))
 
         sortedFields.forEach { key ->
