@@ -44,7 +44,7 @@ class MainActivity : AppCompatActivity() {
     private lateinit var itemTouchHelper: ItemTouchHelper
     
     private var visualizerView: PulseVisualizerView? = null
-    private var visualizerMode: PulseVisualizerView.Mode = PulseVisualizerView.Mode.RIPPLE
+    private var visualizerMode: PulseVisualizerView.Mode = PulseVisualizerView.Mode.NONE
 
     private val playerReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -240,15 +240,14 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         
         val prefs = getSharedPreferences("pulse_prefs", Context.MODE_PRIVATE)
-        val modeStr = prefs.getString("visualizer_mode", "RIPPLE") ?: "RIPPLE"
+        val modeStr = prefs.getString("visualizer_mode", "NONE") ?: "NONE"
         visualizerMode = try {
             PulseVisualizerView.Mode.valueOf(modeStr)
         } catch (e: Exception) {
-            PulseVisualizerView.Mode.RIPPLE
+            PulseVisualizerView.Mode.NONE
         }
         
         visualizerView?.setMode(visualizerMode)
-        visualizerView?.visibility = if (visualizerMode == PulseVisualizerView.Mode.NONE) View.GONE else View.VISIBLE
         
         if (currentlyPlayingId != -1L) {
             val res = resourceList.find { it.id == currentlyPlayingId }
@@ -304,13 +303,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun updateUIVisibility(isPlaying: Boolean) {
-        val hideUI = isPlaying && visualizerMode != PulseVisualizerView.Mode.NONE
+        val showVisualizer = isPlaying && visualizerMode != PulseVisualizerView.Mode.NONE
         val duration = 400L
-        
-        if (hideUI) {
-            pulseRecyclerView.animate().alpha(0f).setDuration(duration).start()
+
+        visualizerView?.visibility = if (showVisualizer) View.VISIBLE else View.GONE
+
+        if (showVisualizer) {
+            pulseRecyclerView.animate().alpha(0f).setDuration(duration).withEndAction {
+                pulseRecyclerView.visibility = View.GONE
+            }.start()
             appBarLayout.animate().translationY(-appBarLayout.height.toFloat()).setDuration(duration).start()
         } else {
+            pulseRecyclerView.visibility = View.VISIBLE
             pulseRecyclerView.animate().alpha(1f).setDuration(duration).start()
             appBarLayout.animate().translationY(0f).setDuration(duration).start()
         }

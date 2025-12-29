@@ -126,7 +126,7 @@ class SettingsActivity : AppCompatActivity() {
         autoCompleteTextView.setAdapter(adapter)
         
         val prefs = getSharedPreferences("pulse_prefs", Context.MODE_PRIVATE)
-        val currentMode = prefs.getString("visualizer_mode", "RIPPLE") ?: "RIPPLE"
+        val currentMode = prefs.getString("visualizer_mode", "NONE") ?: "NONE"
         
         // Find and set initial text
         val currentIndex = modeValues.indexOf(currentMode).coerceAtLeast(0)
@@ -538,8 +538,6 @@ class SettingsActivity : AppCompatActivity() {
             val placeholders = findPlaceholders(data.config).toMutableSet()
             
             if (type == "KAFKA") {
-                placeholders.remove("KAFKA_KEY")
-                placeholders.remove("KAFKA_SECRET")
                 placeholders.add("apiKey")
                 placeholders.add("apiSecret")
             }
@@ -573,7 +571,7 @@ class SettingsActivity : AppCompatActivity() {
     }
 
     private fun findPlaceholders(text: String): Set<String> {
-        val regex = Regex("\\\$\\{([^}]+)\\}")
+        val regex = Regex("\\$\\{([^}]+)\\}")
         return regex.findAll(text).map { it.groupValues[1] }.toSet()
     }
 
