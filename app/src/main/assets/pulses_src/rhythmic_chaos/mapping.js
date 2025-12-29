@@ -1,4 +1,4 @@
-// Rhythmic Chaos Mapping (modern-minimalistic-ui)
+// Rhythmic Chaos Mapping (minimal-ui)
 
 var samples = [
     "message-new-instant", "dialog-information", "completion-success", "audio-volume-change", "camera-shutter"

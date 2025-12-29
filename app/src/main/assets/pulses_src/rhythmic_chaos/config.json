@@ -3,7 +3,7 @@
   "type": "RHYTHM",
   "description": "Generates musical bursts using rhythmic patterns like quadruplets, triplets, and fast runs. Each burst uses a single sound with an ascending or descending pitch scale. A testing resource.",
   "eventFile": "chaos",
-  "acousticStyle": "modern-minimalistic-ui",
+  "acousticStyle": "minimal-ui",
   "eventSounds": [
     "message-new-instant", "dialog-information", "completion-success", "audio-volume-change", "camera-shutter"
   ]

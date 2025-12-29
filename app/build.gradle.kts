@@ -76,10 +76,6 @@ if (pulsesSrcDir.exists() && pulsesSrcDir.isDirectory) {
                 val style = match?.groupValues?.get(1)?.trim() ?: ""
                 
                 val soundsFolderName = when (style) {
-                    "99Sounds Percussion I", "99Sounds Drum Samples I" -> "99Sounds/Drum Samples I"
-                    "99Sounds Percussion II", "99Sounds Drum Samples II" -> "99Sounds/Drum Samples II"
-                    "orchestra_tada" -> "Orchestra/tada"
-                    "orchestra_violin" -> "Orchestra/violin"
                     "miui" -> "miui"
                     "steam" -> "steam"
                     "oxygen" -> "oxygen"
