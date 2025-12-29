@@ -16,9 +16,11 @@ So the standard build process applies. Easiest is to clone this repository, load
 Precompiled packages will be provided in the form of APKs. The standard process of manually installing an APK into an Android device via the 'adb' utility applies. 
 
 ## Usage
-Once installed on any android device you can load event sources in form of "pulses" that are distributed as standalone files. Those files can either be downloaded to the device itself from where you can import them. Or you can directly download them via network from github. 
-Each loaded event stream pulse offers a music player like control: a "play" button that starts consuming from this event stream. 
-How the event data is transformed into sound is configured in the pulse definition, there is no means to somehow modify that configuration. 
+Once installed on any android device you can load event sources in form of "pulses" that are distributed as standalone files. Those files can directly be downloaded via network from github. Or, for development purpose, you can import local pulse files from the device itself.   
+
+Each loaded pulse offers a music player like control: a "play"/"pause" button that starts consuming from the event stream configured in this pulse.
+How the event data is transformed into sound is configured in the pulse definition, there is no means to somehow modify that configuration. You can only enable a visualization in addition to the audio that is generated. 
+
 The app's UI is simple, should be self explaining. 
 
 ## Motivation
@@ -35,10 +37,10 @@ Pulses engines have to be implemented in a generic way so that they can be reuse
 I expect contributions to consider, obey and document the license of the provided material, especially sound samples. 
 
 ## Author
-Christian Reiner
-foss@christian-reiner.info
-https://github.com/arkascha
-Hamburg @ Germany @ Europe
+Christian Reiner\
+eMail: foss@christian-reiner.info\
+Github: https://github.com/arkascha\
+Location: Hamburg @ Germany @ Europe
 
 ## License
 Published under the Apache-2.0 license. 
