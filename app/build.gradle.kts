@@ -1,4 +1,4 @@
-import java.util.Properties
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import java.io.ByteArrayOutputStream
 
 plugins {
@@ -37,15 +37,20 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
-    kotlinOptions {
-        jvmTarget = "11"
+    kotlin {
+        compilerOptions {
+            jvmTarget.set(JvmTarget.JVM_11)
+        }
     }
     buildFeatures {
         buildConfig = true
@@ -64,17 +69,17 @@ if (pulsesSrcDir.exists() && pulsesSrcDir.isDirectory) {
         val zipTask = tasks.register<Zip>("zipPulse_$pulseName") {
             archiveFileName.set("$pulseName.pulse")
             destinationDirectory.set(pulsesOutputDir)
-            
+
             // Files from the pulse source folder
             from(pulseDir)
-            
+
             // Logic to bundle the correct sounds based on config.json
             val configFile = file("${pulseDir}/config.json")
             if (configFile.exists()) {
                 val content = configFile.readText()
                 val match = Regex("\"acousticStyle\"\\s*:\\s*\"([^\"]+)\"").find(content)
                 val style = match?.groupValues?.get(1)?.trim() ?: ""
-                
+
                 val soundsFolderName = when (style) {
                     "miui" -> "miui"
                     "steam" -> "steam"
@@ -83,7 +88,7 @@ if (pulsesSrcDir.exists() && pulsesSrcDir.isDirectory) {
                     "minimal-ui" -> "minimal-ui"
                     else -> null
                 }
-                
+
                 if (soundsFolderName != null) {
                     val soundsDir = project.file("src/main/assets/sounds/$soundsFolderName")
                     if (soundsDir.exists()) {
@@ -112,15 +117,17 @@ val generatePulsesIndex = tasks.register("generatePulsesIndex") {
                 val content = configFile.readText()
                 val nameMatch = Regex("\"name\"\\s*:\\s*\"([^\"]+)\"").find(content)
                 val descMatch = Regex("\"description\"\\s*:\\s*\"([^\"]+)\"").find(content)
-                
+
                 val pulseName = nameMatch?.groupValues?.get(1) ?: pulseDir.name
                 val pulseDesc = descMatch?.groupValues?.get(1) ?: ""
-                
-                index.add(mapOf(
-                    "filename" to "${pulseDir.name}.pulse",
-                    "name" to pulseName,
-                    "description" to pulseDesc
-                ))
+
+                index.add(
+                    mapOf(
+                        "filename" to "${pulseDir.name}.pulse",
+                        "name" to pulseName,
+                        "description" to pulseDesc
+                    )
+                )
             }
         }
         val indexFile = file("${pulsesOutputDir}/pulses_index.json")
@@ -152,7 +159,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.rhino)
     implementation(libs.okhttp)
-    
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
