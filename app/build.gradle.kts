@@ -159,6 +159,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.rhino)
     implementation(libs.okhttp)
+implementation("androidx.media:media:1.7.0") // Added for MediaStyle
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

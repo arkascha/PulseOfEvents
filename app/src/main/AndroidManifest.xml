@@ -4,6 +4,11 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.SET_WALLPAPER" />
 
     <application
         android:allowBackup="true"
@@ -29,11 +34,59 @@
             android:theme="@style/Theme.PulseOfEvents.NoActionBar"
             android:parentActivityName=".ui.main.MainActivity" />
         
-        <service android:name=".audio.player.KafkaPlayerService" />
-        <service android:name=".audio.player.FilePlayerService" />
-        <service android:name=".audio.player.WebSocketPlayerService" />
-        <service android:name=".audio.player.RandomPlayerService" />
-        <service android:name=".audio.player.RhythmicPlayerService" />
+        <activity
+            android:name=".ui.widget.WidgetInfoActivity"
+            android:theme="@style/Theme.PulseOfEvents.Transparent"
+            android:excludeFromRecents="true"
+            android:exported="false" />
+
+        <service 
+            android:name=".audio.player.KafkaPlayerService"
+            android:foregroundServiceType="mediaPlayback" />
+        <service 
+            android:name=".audio.player.FilePlayerService"
+            android:foregroundServiceType="mediaPlayback" />
+        <service 
+            android:name=".audio.player.WebSocketPlayerService"
+            android:foregroundServiceType="mediaPlayback" />
+        <service 
+            android:name=".audio.player.RandomPlayerService"
+            android:foregroundServiceType="mediaPlayback" />
+        <service 
+            android:name=".audio.player.RhythmicPlayerService"
+            android:foregroundServiceType="mediaPlayback" />
+
+        <service
+            android:name=".ui.visualizer.PulseWallpaperService"
+            android:label="Pulse of Events Visualizer"
+            android:permission="android.permission.BIND_WALLPAPER"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.wallpaper.WallpaperService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.service.wallpaper"
+                android:resource="@xml/pulse_wallpaper" />
+        </service>
+
+        <receiver
+            android:name=".ui.widget.PulseWidgetProvider"
+            android:label="Pulse Playback Control"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="org.rustygnome.pulse.WIDGET_PREV" />
+                <action android:name="org.rustygnome.pulse.WIDGET_NEXT" />
+                <action android:name="org.rustygnome.pulse.WIDGET_PLAY_STOP" />
+                <action android:name="org.rustygnome.pulse.WIDGET_INFO" />
+                <action android:name="org.rustygnome.pulse.ACTION_STOP_PLAYBACK" />
+                <action android:name="org.rustygnome.pulse.ACTION_PLAYER_STARTED" />
+                <action android:name="org.rustygnome.pulse.ACTION_PLAYER_STOPPED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/pulse_widget_info" />
+        </receiver>
     </application>
 
 </manifest>

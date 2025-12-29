@@ -5,6 +5,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.graphics.RenderEffect
+import android.graphics.Shader
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.Menu
@@ -55,6 +58,19 @@ class MainActivity : AppCompatActivity() {
                     val vol = intent.getFloatExtra(PlayerService.EXTRA_VOLUME, 1.0f)
                     val pitch = intent.getFloatExtra(PlayerService.EXTRA_PITCH, 1.0f)
                     visualizerView?.onPulse(vol, pitch)
+                }
+                PlayerNotificationHelper.ACTION_STOP -> {
+                    stopPlayback()
+                }
+                PlayerService.ACTION_PLAYER_STARTED -> {
+                    val resourceId = intent.getLongExtra("resource_id", -1L)
+                    if (resourceId != -1L) {
+                        currentlyPlayingId = resourceId
+                        adapter.setPlayingResource(resourceId)
+                        val res = resourceList.find { it.id == resourceId }
+                        visualizerView?.setPulseName(res?.name)
+                        updateUIVisibility(true)
+                    }
                 }
                 KafkaPlayerService.ACTION_PLAYER_ERROR -> {
                     val errorMsg = intent.getStringExtra(KafkaPlayerService.EXTRA_ERROR_MESSAGE)
@@ -123,6 +139,10 @@ class MainActivity : AppCompatActivity() {
 
         setupItemTouchHelper()
         loadResources()
+        
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerForActivityResult(ActivityResultContracts.RequestPermission()) {}.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
@@ -185,6 +205,8 @@ class MainActivity : AppCompatActivity() {
         super.onStart()
         val filter = IntentFilter().apply {
             addAction(PlayerService.ACTION_PULSE_FIRE)
+            addAction(PlayerNotificationHelper.ACTION_STOP)
+            addAction(PlayerService.ACTION_PLAYER_STARTED)
             addAction(KafkaPlayerService.ACTION_PLAYER_ERROR)
             addAction(KafkaPlayerService.ACTION_PLAYER_STOPPED)
             addAction(FilePlayerService.ACTION_PLAYER_STOPPED)
@@ -239,6 +261,10 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         
+        // Sync with the actual service state
+        currentlyPlayingId = AbstractPlayerService.runningServiceId
+        adapter.setPlayingResource(currentlyPlayingId)
+
         val prefs = getSharedPreferences("pulse_prefs", Context.MODE_PRIVATE)
         val modeStr = prefs.getString("visualizer_mode", "NONE") ?: "NONE"
         visualizerMode = try {
@@ -252,6 +278,8 @@ class MainActivity : AppCompatActivity() {
         if (currentlyPlayingId != -1L) {
             val res = resourceList.find { it.id == currentlyPlayingId }
             visualizerView?.setPulseName(res?.name)
+        } else {
+            visualizerView?.setPulseName(null)
         }
         
         updateUIVisibility(currentlyPlayingId != -1L)
@@ -310,7 +338,7 @@ class MainActivity : AppCompatActivity() {
 
         if (showVisualizer) {
             pulseRecyclerView.animate().alpha(0f).setDuration(duration).withEndAction {
-                pulseRecyclerView.visibility = View.GONE
+                if (currentlyPlayingId != -1L) pulseRecyclerView.visibility = View.GONE
             }.start()
             appBarLayout.animate().translationY(-appBarLayout.height.toFloat()).setDuration(duration).start()
         } else {
@@ -339,6 +367,7 @@ class MainActivity : AppCompatActivity() {
         
         serviceIntent.apply {
             putExtra("resource_id", resource.id)
+            putExtra("pulse_name", resource.name)
             putExtra("pulse_id", resource.pulseId)
             putExtra("config_content", resource.configContent)
             putExtra("script_content", resource.scriptContent)

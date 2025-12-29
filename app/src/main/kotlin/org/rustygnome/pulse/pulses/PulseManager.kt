@@ -75,12 +75,16 @@ class PulseManager(private val context: Context) {
         }
     }
 
+    fun getPulseDir(pulseId: String): File {
+        return File(pulsesDir, pulseId)
+    }
+
     fun getSoundsDir(pulseId: String): File {
-        return File(File(pulsesDir, pulseId), "sounds")
+        return File(getPulseDir(pulseId), "sounds")
     }
 
     fun deletePulse(pulseId: String) {
-        File(pulsesDir, pulseId).deleteRecursively()
+        getPulseDir(pulseId).deleteRecursively()
     }
 
     data class PulseData(

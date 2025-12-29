@@ -1,8 +1,6 @@
 package org.rustygnome.pulse.audio.player
 
-import android.app.Service
 import android.content.Intent
-import android.os.IBinder
 import android.util.Log
 import org.apache.kafka.clients.consumer.ConsumerConfig
 import org.apache.kafka.clients.consumer.KafkaConsumer
@@ -10,24 +8,20 @@ import org.apache.kafka.common.config.SaslConfigs
 import org.apache.kafka.common.errors.WakeupException
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.json.JSONObject
-import org.rustygnome.pulse.audio.Synthesizer
 import org.rustygnome.pulse.data.SecurityHelper
-import org.rustygnome.pulse.pulses.ScriptEvaluator
 import java.time.Duration
 import java.util.Properties
 
-class KafkaPlayerService : Service(), PlayerService {
+class KafkaPlayerService : AbstractPlayerService() {
 
     private var kafkaConsumer: KafkaConsumer<String, String>? = null
-    private lateinit var synthesizer: Synthesizer
     private lateinit var securityHelper: SecurityHelper
-    private var scriptEvaluator: ScriptEvaluator? = null
-    private var isRunning = false
     private var consumerThread: Thread? = null
-    private var resourceId: Long = -1L
+
+    override val tag: String = "KafkaPlayerService"
+    override val actionStopped: String = ACTION_PLAYER_STOPPED
 
     companion object {
-        private const val TAG = "KafkaPlayerService"
         const val ACTION_PLAYER_ERROR = "org.rustygnome.pulse.ACTION_PLAYER_ERROR"
         const val ACTION_PLAYER_STOPPED = "org.rustygnome.pulse.ACTION_PLAYER_STOPPED"
         const val EXTRA_ERROR_MESSAGE = "extra_error_message"
@@ -35,33 +29,18 @@ class KafkaPlayerService : Service(), PlayerService {
 
     override fun onCreate() {
         super.onCreate()
-        Log.i(TAG, "onCreate: Service creating.")
-        synthesizer = Synthesizer(this)
         securityHelper = SecurityHelper(this)
     }
 
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i(TAG, "onStartCommand: Service starting.")
-        
-        resourceId = intent?.getLongExtra("resource_id", -1L) ?: -1L
-        var bootstrapServers = intent?.getStringExtra("bootstrap_servers")
-        var topic = intent?.getStringExtra("topic")
-        
-        // Decrypt credentials from DB
-        val encryptedKey = intent?.getStringExtra("api_key")
-        val encryptedSecret = intent?.getStringExtra("api_secret")
+    override fun onStartPlayback(intent: Intent) {
+        var bootstrapServers = intent.getStringExtra("bootstrap_servers")
+        var topic = intent.getStringExtra("topic")
+        val encryptedKey = intent.getStringExtra("api_key")
+        val encryptedSecret = intent.getStringExtra("api_secret")
         var apiKey = securityHelper.decrypt(encryptedKey)
         var apiSecret = securityHelper.decrypt(encryptedSecret)
-        
-        val eventSounds = intent?.getStringArrayListExtra("event_sounds")
-        val acousticStyle = intent?.getStringExtra("acoustic_style")
-        
-        val pulseId = intent?.getStringExtra("pulse_id")
-        val scriptContent = intent?.getStringExtra("script_content")
 
-        if (bootstrapServers != null && topic != null && eventSounds != null && acousticStyle != null) {
-            
-            // Resolve placeholders in Kafka settings (for other secrets if needed)
+        if (bootstrapServers != null && topic != null) {
             val combinedConfig = "$bootstrapServers $topic ${apiKey ?: ""} ${apiSecret ?: ""}"
             val placeholders = findPlaceholders(combinedConfig)
             if (placeholders.isNotEmpty()) {
@@ -72,30 +51,20 @@ class KafkaPlayerService : Service(), PlayerService {
                 apiSecret = apiSecret?.let { resolvePlaceholders(it, credentials) } ?: apiSecret
             }
 
-            if (!isRunning) {
-                isRunning = true
-                synthesizer.loadStyle(acousticStyle, eventSounds, pulseId)
-                
-                if (scriptContent != null) {
-                    scriptEvaluator = ScriptEvaluator(scriptContent)
-                }
-                
-                try {
-                    setupKafkaConsumer(bootstrapServers!!, apiKey, apiSecret)
-                    consumerThread = Thread { consumeEvents(topic!!) }
-                    consumerThread?.start()
-                } catch (e: Exception) {
-                    val errorMsg = "Failed to initialize Kafka consumer: ${e.localizedMessage}"
-                    Log.e(TAG, errorMsg, e)
-                    sendErrorBroadcast(errorMsg)
-                    stopSelf()
-                }
+            try {
+                setupKafkaConsumer(bootstrapServers!!, apiKey, apiSecret)
+                consumerThread = Thread { consumeEvents(topic!!) }
+                consumerThread?.start()
+            } catch (e: Exception) {
+                val errorMsg = "Failed to initialize Kafka consumer: ${e.localizedMessage}"
+                Log.e(tag, errorMsg, e)
+                sendErrorBroadcast(errorMsg)
+                stopSelf()
             }
         } else {
-            Log.w(TAG, "onStartCommand: Missing intent extras, stopping service.")
+            Log.w(tag, "Missing Kafka specific intent extras.")
             stopSelf()
         }
-        return START_STICKY
     }
 
     private fun findPlaceholders(text: String): Set<String> {
@@ -120,25 +89,13 @@ class KafkaPlayerService : Service(), PlayerService {
         sendBroadcast(intent)
     }
 
-    private fun sendStoppedBroadcast() {
-        val intent = Intent(ACTION_PLAYER_STOPPED).apply {
-            putExtra("resource_id", resourceId)
-            setPackage(packageName)
-        }
-        sendBroadcast(intent)
-    }
-
     private fun setupKafkaConsumer(bootstrapServers: String, apiKey: String?, apiSecret: String?) {
         val props = Properties()
         props[ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG] = bootstrapServers
         props[ConsumerConfig.GROUP_ID_CONFIG] = "pulse-android-app"
         props[ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java.name
         props[ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG] = StringDeserializer::class.java.name
-
-        // IMPORTANT: Disable JMX metrics which causes the ManagementFactory crash on Android
         props["metrics.reporters"] = ""
-        
-        // Try using the new consumer group protocol (Kafka 3.7+) which might avoid some legacy init paths
         props["group.protocol"] = "consumer"
 
         if (!apiKey.isNullOrEmpty() && !apiSecret.isNullOrEmpty()) {
@@ -146,13 +103,11 @@ class KafkaPlayerService : Service(), PlayerService {
             props[SaslConfigs.SASL_MECHANISM] = "PLAIN"
             props[SaslConfigs.SASL_JAAS_CONFIG] = "org.apache.kafka.common.security.plain.PlainLoginModule required username=\"$apiKey\" password=\"$apiSecret\";"
         }
-
         kafkaConsumer = KafkaConsumer(props)
     }
 
     private fun consumeEvents(topic: String) {
         try {
-            Log.d(TAG, "Subscribing to topic: $topic")
             kafkaConsumer?.subscribe(listOf(topic))
             while (isRunning) {
                 val records = kafkaConsumer?.poll(Duration.ofMillis(100)) ?: continue
@@ -162,11 +117,7 @@ class KafkaPlayerService : Service(), PlayerService {
                         if (scriptEvaluator != null) {
                             val params = scriptEvaluator!!.evaluate(message)
                             if (params.sample != null) {
-                                synthesizer.play(
-                                    params.sample,
-                                    params.pitch.toFloat(),
-                                    params.volume.toFloat()
-                                )
+                                synthesizer.play(params.sample, params.pitch.toFloat(), params.volume.toFloat())
                             }
                         } else {
                             val jsonObject = JSONObject(message)
@@ -176,40 +127,24 @@ class KafkaPlayerService : Service(), PlayerService {
                             synthesizer.play(eventType, rate.coerceIn(0.5f, 2.0f))
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error processing record: $message", e)
+                        Log.e(tag, "Error processing record", e)
                     }
                 }
             }
         } catch (e: WakeupException) {
-            Log.i(TAG, "Consumer thread woken up, shutting down.")
+            // expected
         } catch (e: Exception) {
-            val errorMsg = "Kafka consumer thread error: ${e.localizedMessage}"
-            Log.e(TAG, errorMsg, e)
-            sendErrorBroadcast(errorMsg)
+            sendErrorBroadcast(e.localizedMessage ?: "Consumer error")
         } finally {
             sendStoppedBroadcast()
         }
     }
 
     override fun onDestroy() {
-        super.onDestroy()
-        Log.i(TAG, "onDestroy: Service destroying.")
-        if (isRunning) {
-            isRunning = false
-            kafkaConsumer?.wakeup()
-            try {
-                consumerThread?.join()
-            } catch (e: InterruptedException) {
-                Log.w(TAG, "Interrupted while waiting for consumer thread to finish.")
-            }
-        }
+        isRunning = false
+        kafkaConsumer?.wakeup()
+        try { consumerThread?.join() } catch (e: Exception) {}
         kafkaConsumer?.close()
-        scriptEvaluator?.release()
-        synthesizer.release()
-        sendStoppedBroadcast()
-    }
-
-    override fun onBind(intent: Intent): IBinder? {
-        return null
+        super.onDestroy()
     }
 }
