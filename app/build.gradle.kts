@@ -78,20 +78,11 @@ if (pulsesSrcDir.exists() && pulsesSrcDir.isDirectory) {
             if (configFile.exists()) {
                 val content = configFile.readText()
                 val match = Regex("\"acousticStyle\"\\s*:\\s*\"([^\"]+)\"").find(content)
-                val style = match?.groupValues?.get(1)?.trim() ?: ""
+                val style = match?.groupValues?.get(1)?.trim()
 
-                val soundsFolderName = when (style) {
-                    "miui" -> "miui"
-                    "steam" -> "steam"
-                    "oxygen" -> "oxygen"
-                    "ds-cobald" -> "ds-cobald"
-                    "minimal-ui" -> "minimal-ui"
-                    else -> null
-                }
-
-                if (soundsFolderName != null) {
-                    val soundsDir = project.file("src/main/assets/sounds/$soundsFolderName")
-                    if (soundsDir.exists()) {
+                if (!style.isNullOrEmpty()) {
+                    val soundsDir = project.file("src/main/assets/sounds/$style")
+                    if (soundsDir.exists() && soundsDir.isDirectory) {
                         // Place selected sounds into a 'sounds/' folder inside the ZIP
                         from(soundsDir) {
                             into("sounds")
@@ -159,7 +150,7 @@ dependencies {
     implementation(libs.gson)
     implementation(libs.rhino)
     implementation(libs.okhttp)
-implementation("androidx.media:media:1.7.0") // Added for MediaStyle
+    implementation("androidx.media:media:1.7.0") // Added for MediaStyle
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

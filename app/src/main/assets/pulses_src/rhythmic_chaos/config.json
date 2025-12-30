@@ -1,5 +1,5 @@
 {
-  "name": "Rhythmic Chaos Generator",
+  "name": "Rhythmic Chaos",
   "type": "RHYTHM",
   "description": "Generates musical bursts using rhythmic patterns like quadruplets, triplets, and fast runs. Each burst uses a single sound with an ascending or descending pitch scale. A testing resource.",
   "eventFile": "chaos",

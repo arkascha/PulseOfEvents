@@ -33,51 +33,31 @@ class KafkaPlayerService : AbstractPlayerService() {
     }
 
     override fun onStartPlayback(intent: Intent) {
-        var bootstrapServers = intent.getStringExtra("bootstrap_servers")
-        var topic = intent.getStringExtra("topic")
+        val bootstrapServers = intent.getStringExtra("bootstrap_servers")
+        val topic = intent.getStringExtra("topic")
         val encryptedKey = intent.getStringExtra("api_key")
         val encryptedSecret = intent.getStringExtra("api_secret")
-        var apiKey = securityHelper.decrypt(encryptedKey)
-        var apiSecret = securityHelper.decrypt(encryptedSecret)
+        val apiKey = securityHelper.decrypt(encryptedKey)
+        val apiSecret = securityHelper.decrypt(encryptedSecret)
 
         if (bootstrapServers != null && topic != null) {
-            val combinedConfig = "$bootstrapServers $topic ${apiKey ?: ""} ${apiSecret ?: ""}"
-            val placeholders = findPlaceholders(combinedConfig)
-            if (placeholders.isNotEmpty()) {
-                val credentials = securityHelper.getCredentials(resourceId, placeholders)
-                bootstrapServers = resolvePlaceholders(bootstrapServers, credentials)
-                topic = resolvePlaceholders(topic, credentials)
-                apiKey = apiKey?.let { resolvePlaceholders(it, credentials) } ?: apiKey
-                apiSecret = apiSecret?.let { resolvePlaceholders(it, credentials) } ?: apiSecret
+            consumerThread = Thread {
+                try {
+                    setupKafkaConsumer(bootstrapServers, apiKey, apiSecret)
+                    consumeEvents(topic)
+                } catch (e: Exception) {
+                    val errorMsg = "Failed to initialize Kafka consumer: ${e.localizedMessage}"
+                    Log.e(tag, errorMsg, e)
+                    sendErrorBroadcast(errorMsg)
+                    stopSelf()
+                }
             }
+            consumerThread?.start()
 
-            try {
-                setupKafkaConsumer(bootstrapServers!!, apiKey, apiSecret)
-                consumerThread = Thread { consumeEvents(topic!!) }
-                consumerThread?.start()
-            } catch (e: Exception) {
-                val errorMsg = "Failed to initialize Kafka consumer: ${e.localizedMessage}"
-                Log.e(tag, errorMsg, e)
-                sendErrorBroadcast(errorMsg)
-                stopSelf()
-            }
         } else {
             Log.w(tag, "Missing Kafka specific intent extras.")
             stopSelf()
         }
-    }
-
-    private fun findPlaceholders(text: String): Set<String> {
-        val regex = Regex("\\\$\\{([^}]+)\\}")
-        return regex.findAll(text).map { it.groupValues[1] }.toSet()
-    }
-
-    private fun resolvePlaceholders(text: String, credentials: Map<String, String>): String {
-        var resolvedText = text
-        credentials.forEach { (key, value) ->
-            resolvedText = resolvedText.replace("\${$key}", value)
-        }
-        return resolvedText
     }
 
     private fun sendErrorBroadcast(message: String) {

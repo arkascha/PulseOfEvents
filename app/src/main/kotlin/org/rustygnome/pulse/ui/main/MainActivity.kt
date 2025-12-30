@@ -351,11 +351,11 @@ class MainActivity : AppCompatActivity() {
     private fun startSelectedService(resource: Resource) {
         Log.i(TAG, "Starting service for resource: ${resource.name}")
         
-        val serviceIntent = when {
-            resource.pulseType == "KAFKA" -> Intent(this, KafkaPlayerService::class.java)
-            resource.pulseType == "WEBSOCKET" -> Intent(this, WebSocketPlayerService::class.java)
-            resource.pulseType == "SIMULATION" -> Intent(this, RandomPlayerService::class.java)
-            resource.pulseType == "RHYTHM" -> Intent(this, RhythmicPlayerService::class.java)
+        val serviceIntent = when (resource.pulseType) {
+            "KAFKA" -> Intent(this, KafkaPlayerService::class.java)
+            "WEBSOCKET" -> Intent(this, WebSocketPlayerService::class.java)
+            "SIMULATION" -> Intent(this, RandomPlayerService::class.java)
+            "RHYTHM" -> Intent(this, RhythmicPlayerService::class.java)
             else -> {
                 when {
                     resource.webSocketUrl != null -> Intent(this, WebSocketPlayerService::class.java)
